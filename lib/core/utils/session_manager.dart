@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SessionManager {
@@ -8,9 +9,13 @@ class SessionManager {
   static const String _keyRole = 'role';
   static const String _keyOrganizationId = 'organization_id';
 
+  static final ValueNotifier<String> activeRoleNotifier = ValueNotifier<String>('PARENT');
+
   final SharedPreferences _prefs;
 
-  SessionManager(this._prefs);
+  SessionManager(this._prefs) {
+    activeRoleNotifier.value = _prefs.getString(_keyRole) ?? 'PARENT';
+  }
 
   static Future<SessionManager> create() async {
     final prefs = await SharedPreferences.getInstance();
@@ -31,6 +36,7 @@ class SessionManager {
     await _prefs.setString(_keyEmail, email);
     await _prefs.setString(_keyRole, role);
     await _prefs.setString(_keyOrganizationId, organizationId);
+    activeRoleNotifier.value = role;
   }
 
   String? get token => _prefs.getString(_keyToken);
@@ -42,6 +48,11 @@ class SessionManager {
 
   bool get isAuthenticated => token != null && token!.isNotEmpty;
 
+  Future<void> setRole(String newRole) async {
+    await _prefs.setString(_keyRole, newRole);
+    activeRoleNotifier.value = newRole;
+  }
+
   Future<void> clearSession() async {
     await _prefs.remove(_keyToken);
     await _prefs.remove(_keyUserId);
@@ -49,5 +60,6 @@ class SessionManager {
     await _prefs.remove(_keyEmail);
     await _prefs.remove(_keyRole);
     await _prefs.remove(_keyOrganizationId);
+    activeRoleNotifier.value = 'PARENT';
   }
 }

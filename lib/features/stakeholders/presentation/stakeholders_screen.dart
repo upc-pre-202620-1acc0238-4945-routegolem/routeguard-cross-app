@@ -24,6 +24,7 @@ class StakeholdersScreen extends StatefulWidget {
 class _StakeholdersScreenState extends State<StakeholdersScreen> {
   late final StakeholderRepository _repository;
   StakeholderTab _selectedTab = StakeholderTab.drivers;
+  String _searchQuery = '';
 
   List<DriverModel> _drivers = [];
   List<ParentModel> _parents = [];
@@ -140,6 +141,22 @@ class _StakeholdersScreenState extends State<StakeholdersScreen> {
               ],
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: _selectedTab == StakeholderTab.drivers
+                    ? 'Buscar conductor por nombre o licencia...'
+                    : _selectedTab == StakeholderTab.parents
+                        ? 'Buscar padre o estudiante...'
+                        : 'Buscar grupo escolar...',
+                prefixIcon: const Icon(Icons.search, size: 20),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onChanged: (val) => setState(() => _searchQuery = val.trim().toLowerCase()),
+            ),
+          ),
           const Divider(height: 1),
 
           // Content List
@@ -148,71 +165,109 @@ class _StakeholdersScreenState extends State<StakeholdersScreen> {
                 ? const Center(child: CircularProgressIndicator())
                 : RefreshIndicator(
                     onRefresh: _loadData,
-                    child: ListView(
-                      padding: const EdgeInsets.all(16),
-                      children: [
-                        if (_selectedTab == StakeholderTab.drivers) ...[
-                          OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppTheme.primaryNavy,
-                              side: const BorderSide(color: AppTheme.primaryNavy),
-                              minimumSize: const Size.fromHeight(46),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                            icon: const Icon(Icons.person_add),
-                            label: Text(AppStrings.tr('btn_register_driver')),
-                            onPressed: _openRegisterDriver,
-                          ),
-                          const SizedBox(height: 12),
-                          ..._drivers.map((drv) => _buildDriverCard(drv)),
-                        ] else if (_selectedTab == StakeholderTab.parents) ...[
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: AppTheme.primaryNavy,
-                                    side: const BorderSide(color: AppTheme.primaryNavy),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  ),
-                                  icon: const Icon(Icons.person_add, size: 18),
-                                  label: Text(AppStrings.tr('btn_register_parent'), style: const TextStyle(fontSize: 12)),
-                                  onPressed: _openRegisterParent,
+                    child: Builder(
+                      builder: (context) {
+                        final filteredDrivers = _drivers.where((d) =>
+                            _searchQuery.isEmpty ||
+                            d.fullName.toLowerCase().contains(_searchQuery) ||
+                            d.licenseNumber.toLowerCase().contains(_searchQuery) ||
+                            d.email.toLowerCase().contains(_searchQuery)).toList();
+
+                        final filteredParents = _parents.where((p) =>
+                            _searchQuery.isEmpty ||
+                            p.fullName.toLowerCase().contains(_searchQuery) ||
+                            p.email.toLowerCase().contains(_searchQuery) ||
+                            p.children.any((c) => c.fullName.toLowerCase().contains(_searchQuery))).toList();
+
+                        final filteredGroups = _groups.where((g) =>
+                            _searchQuery.isEmpty ||
+                            g.name.toLowerCase().contains(_searchQuery)).toList();
+
+                        return ListView(
+                          padding: const EdgeInsets.all(16),
+                          children: [
+                            if (_selectedTab == StakeholderTab.drivers) ...[
+                              OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppTheme.primaryNavy,
+                                  side: const BorderSide(color: AppTheme.primaryNavy),
+                                  minimumSize: const Size.fromHeight(46),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                 ),
+                                icon: const Icon(Icons.person_add),
+                                label: Text(AppStrings.tr('btn_register_driver')),
+                                onPressed: _openRegisterDriver,
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppTheme.primaryNavy,
-                                    foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              const SizedBox(height: 12),
+                              if (filteredDrivers.isEmpty)
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 20),
+                                  child: Center(child: Text('No se encontraron conductores.', style: TextStyle(color: Colors.grey))),
+                                )
+                              else
+                                ...filteredDrivers.map((drv) => _buildDriverCard(drv)),
+                            ] else if (_selectedTab == StakeholderTab.parents) ...[
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppTheme.primaryNavy,
+                                        side: const BorderSide(color: AppTheme.primaryNavy),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      ),
+                                      icon: const Icon(Icons.person_add, size: 18),
+                                      label: Text(AppStrings.tr('btn_register_parent'), style: const TextStyle(fontSize: 12)),
+                                      onPressed: _openRegisterParent,
+                                    ),
                                   ),
-                                  icon: const Icon(Icons.child_care, size: 18),
-                                  label: Text(AppStrings.tr('btn_register_child'), style: const TextStyle(fontSize: 12)),
-                                  onPressed: _openRegisterChild,
-                                ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppTheme.primaryNavy,
+                                        foregroundColor: Colors.white,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      ),
+                                      icon: const Icon(Icons.child_care, size: 18),
+                                      label: Text(AppStrings.tr('btn_register_child'), style: const TextStyle(fontSize: 12)),
+                                      onPressed: _openRegisterChild,
+                                    ),
+                                  ),
+                                ],
                               ),
+                              const SizedBox(height: 12),
+                              if (filteredParents.isEmpty)
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 20),
+                                  child: Center(child: Text('No se encontraron padres.', style: TextStyle(color: Colors.grey))),
+                                )
+                              else
+                                ...filteredParents.map((par) => _buildParentCard(par)),
+                            ] else ...[
+                              OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppTheme.primaryNavy,
+                                  side: const BorderSide(color: AppTheme.primaryNavy),
+                                  minimumSize: const Size.fromHeight(46),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                                icon: const Icon(Icons.group_add),
+                                label: Text(AppStrings.tr('btn_create_group')),
+                                onPressed: _openCreateGroup,
+                              ),
+                              const SizedBox(height: 12),
+                              if (filteredGroups.isEmpty)
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 20),
+                                  child: Center(child: Text('No se encontraron grupos.', style: TextStyle(color: Colors.grey))),
+                                )
+                              else
+                                ...filteredGroups.map((grp) => _buildGroupCard(grp)),
                             ],
-                          ),
-                          const SizedBox(height: 12),
-                          ..._parents.map((par) => _buildParentCard(par)),
-                        ] else ...[
-                          OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppTheme.primaryNavy,
-                              side: const BorderSide(color: AppTheme.primaryNavy),
-                              minimumSize: const Size.fromHeight(46),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                            icon: const Icon(Icons.group_add),
-                            label: Text(AppStrings.tr('btn_create_group')),
-                            onPressed: _openCreateGroup,
-                          ),
-                          const SizedBox(height: 12),
-                          ..._groups.map((grp) => _buildGroupCard(grp)),
-                        ],
-                      ],
+                          ],
+                        );
+                      },
                     ),
                   ),
           ),

@@ -183,6 +183,55 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
     );
   }
 
+  void _arriveAllAtSchool() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.school, color: AppTheme.primaryNavy),
+            SizedBox(width: 8),
+            Text('Descenso General en Colegio', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+          ],
+        ),
+        content: const Text(
+          '¿Deseas confirmar la entrega y descenso seguro de todos los estudiantes a bordo en la puerta del colegio?',
+          style: TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryNavy,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              setState(() {
+                for (var p in _passengers) {
+                  if (p.status == PassengerBoardingStatus.pending) {
+                    p.status = PassengerBoardingStatus.boarded;
+                  }
+                }
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('¡Descenso general completado! Todos los estudiantes llegaron a salvo al colegio.'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            child: const Text('Confirmar Llegada', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final progress = _totalCount == 0 ? 0.0 : _boardedCount / _totalCount;
@@ -339,7 +388,25 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
+
+              // Batch drop-off action at school (V-05 Don Iván Oscco recommendation)
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.teal.shade800,
+                  side: BorderSide(color: Colors.teal.shade300),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  backgroundColor: Colors.teal.shade50.withValues(alpha: 0.5),
+                ),
+                icon: const Icon(Icons.school, size: 18),
+                label: const Text(
+                  'Llegada al Colegio (Descenso general)',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+                onPressed: _isRouteFinished ? null : _arriveAllAtSchool,
+              ),
+              const SizedBox(height: 14),
 
               // Passengers list header
               Text(
@@ -438,52 +505,110 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
               ],
             ),
             const Divider(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: passenger.status == PassengerBoardingStatus.absent
-                          ? Colors.red.shade900
-                          : Colors.grey.shade700,
-                      side: BorderSide(
-                        color: passenger.status == PassengerBoardingStatus.absent
-                            ? Colors.red
-                            : Colors.grey.shade300,
+
+            // Actions: If already boarded or absent, avoid redundant action buttons (Heuristic #3 fix)
+            if (passenger.status == PassengerBoardingStatus.boarded)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.green.shade200),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle, color: Colors.green, size: 18),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Abordaje confirmado a bordo',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.green),
                       ),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      backgroundColor: passenger.status == PassengerBoardingStatus.absent
-                          ? Colors.red.shade50
-                          : Colors.transparent,
                     ),
-                    icon: const Icon(Icons.close, size: 16),
-                    label: Text(
-                      AppStrings.tr('driver_status_absent'),
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    TextButton(
+                      onPressed: () => _updateStatus(passenger, PassengerBoardingStatus.pending),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Text(
+                        'Modificar',
+                        style: TextStyle(fontSize: 11, color: Colors.grey.shade700, decoration: TextDecoration.underline),
+                      ),
                     ),
-                    onPressed: () => _updateStatus(passenger, PassengerBoardingStatus.absent),
-                  ),
+                  ],
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: passenger.status == PassengerBoardingStatus.boarded
-                          ? Colors.green.shade800
-                          : AppTheme.primaryNavy,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    icon: const Icon(Icons.check, size: 16),
-                    label: Text(
-                      AppStrings.tr('driver_status_boarded'),
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                    onPressed: () => _updateStatus(passenger, PassengerBoardingStatus.boarded),
-                  ),
+              )
+            else if (passenger.status == PassengerBoardingStatus.absent)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.red.shade200),
                 ),
-              ],
-            ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.cancel, color: Colors.red, size: 18),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Marcado como no asistió',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.red),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => _updateStatus(passenger, PassengerBoardingStatus.boarded),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text(
+                        'Marcar Subió',
+                        style: TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey.shade700,
+                        side: BorderSide(color: Colors.grey.shade300),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      icon: const Icon(Icons.close, size: 16),
+                      label: Text(
+                        AppStrings.tr('driver_status_absent'),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: () => _updateStatus(passenger, PassengerBoardingStatus.absent),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryNavy,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      icon: const Icon(Icons.check, size: 16),
+                      label: Text(
+                        AppStrings.tr('driver_status_boarded'),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: () => _updateStatus(passenger, PassengerBoardingStatus.boarded),
+                    ),
+                  ),
+                ],
+              ),
           ],
         ),
       ),

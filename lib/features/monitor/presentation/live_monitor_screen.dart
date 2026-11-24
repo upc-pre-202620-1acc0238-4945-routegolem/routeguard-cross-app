@@ -69,6 +69,21 @@ class _LiveMonitorScreenState extends State<LiveMonitorScreen> {
     );
   }
 
+  Widget _buildLegendItem(Color color, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 5),
+        Text(text, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final mapCenter = _selectedTrip != null
@@ -89,54 +104,84 @@ class _LiveMonitorScreenState extends State<LiveMonitorScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                // Top Interactive Fleet Map
+                // Top Interactive Fleet Map with Legend (RuwaLabs Heurística #9)
                 SizedBox(
                   height: 320,
-                  child: FlutterMap(
-                    mapController: _mapController,
-                    options: MapOptions(
-                      initialCenter: mapCenter,
-                      initialZoom: 13.8,
-                    ),
+                  child: Stack(
                     children: [
-                      TileLayer(
-                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        userAgentPackageName: 'pe.edu.upc.routeguard.crossapp',
-                      ),
-                      MarkerLayer(
-                        markers: _trips.map((trip) {
-                          final isSelected = trip.tripId == _selectedTrip?.tripId;
-                          return Marker(
-                            point: LatLng(trip.currentLatitude, trip.currentLongitude),
-                            width: 50,
-                            height: 50,
-                            child: GestureDetector(
-                              onTap: () => _selectTrip(trip),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: isSelected ? AppTheme.primaryNavy : Colors.teal.shade700,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: isSelected ? 3 : 2,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.3),
-                                      blurRadius: 6,
-                                      offset: const Offset(0, 3),
+                      FlutterMap(
+                        mapController: _mapController,
+                        options: MapOptions(
+                          initialCenter: mapCenter,
+                          initialZoom: 13.8,
+                        ),
+                        children: [
+                          TileLayer(
+                            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            userAgentPackageName: 'pe.edu.upc.routeguard.crossapp',
+                          ),
+                          MarkerLayer(
+                            markers: _trips.map((trip) {
+                              final isSelected = trip.tripId == _selectedTrip?.tripId;
+                              return Marker(
+                                point: LatLng(trip.currentLatitude, trip.currentLongitude),
+                                width: 50,
+                                height: 50,
+                                child: GestureDetector(
+                                  onTap: () => _selectTrip(trip),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? AppTheme.primaryNavy : Colors.teal.shade700,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: isSelected ? 3 : 2,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.3),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ],
                                     ),
-                                  ],
+                                    child: const Icon(
+                                      Icons.directions_bus,
+                                      color: Colors.white,
+                                      size: 26,
+                                    ),
+                                  ),
                                 ),
-                                child: const Icon(
-                                  Icons.directions_bus,
-                                  color: Colors.white,
-                                  size: 26,
-                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
+                      Positioned(
+                        bottom: 8,
+                        left: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.92),
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
                               ),
-                            ),
-                          );
-                        }).toList(),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _buildLegendItem(AppTheme.primaryNavy, 'Seleccionado'),
+                              const SizedBox(width: 12),
+                              _buildLegendItem(Colors.teal.shade700, 'Unidades en ruta'),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -226,6 +271,32 @@ class _LiveMonitorScreenState extends State<LiveMonitorScreen> {
                                         'Conductor: ${trip.driverName} • Placa ${trip.vehiclePlate}',
                                         style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
                                       ),
+                                      if (isSelected) ...[
+                                        const SizedBox(height: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.primaryNavy.withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(color: AppTheme.primaryNavy.withValues(alpha: 0.25)),
+                                          ),
+                                          child: const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.location_on, size: 14, color: AppTheme.primaryNavy),
+                                              SizedBox(width: 4),
+                                              Text(
+                                                '📍 Vehículo seleccionado en el mapa (marcador destacado)',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppTheme.primaryNavy,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                       const SizedBox(height: 10),
                                       Row(
                                         children: [

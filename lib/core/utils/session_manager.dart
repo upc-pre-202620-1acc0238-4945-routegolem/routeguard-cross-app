@@ -9,13 +9,16 @@ class SessionManager {
   static const String _keyRole = 'role';
   static const String _keyOrganizationId = 'organization_id';
   static const String _keySeenTutorialPrefix = 'seen_tutorial_';
+  static const String _keyAvatarPath = 'avatar_path';
 
   static final ValueNotifier<String> activeRoleNotifier = ValueNotifier<String>('PARENT');
+  static final ValueNotifier<String?> avatarPathNotifier = ValueNotifier<String?>(null);
 
   final SharedPreferences _prefs;
 
   SessionManager(this._prefs) {
     activeRoleNotifier.value = normalizeRole(_prefs.getString(_keyRole) ?? 'PARENT');
+    avatarPathNotifier.value = _prefs.getString(_keyAvatarPath);
   }
 
   static Future<SessionManager> create() async {
@@ -66,6 +69,17 @@ class SessionManager {
 
   Future<void> setTutorialSeen(String userId, bool seen) async {
     await _prefs.setBool('$_keySeenTutorialPrefix$userId', seen);
+  }
+
+  String? get avatarPath => _prefs.getString(_keyAvatarPath);
+
+  Future<void> setAvatarPath(String? path) async {
+    if (path == null) {
+      await _prefs.remove(_keyAvatarPath);
+    } else {
+      await _prefs.setString(_keyAvatarPath, path);
+    }
+    avatarPathNotifier.value = path;
   }
 
   Future<void> setRole(String newRole) async {

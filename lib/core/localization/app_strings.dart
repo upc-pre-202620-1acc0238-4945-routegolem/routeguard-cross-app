@@ -48,7 +48,7 @@ class AppStrings {
       'profile_guide_desc': 'Repasa las funciones de la app con nuestro asistente.',
       // Subscriptions
       'subscription_card_title': 'Planes y Suscripción',
-      'subscription_card_subtitle': 'Plan Familiar Activo • S/ 89/mes',
+      'subscription_card_subtitle': 'Plan Intermedio Activo • S/ 99.99/mes',
       'language_card_title': 'Idioma del sistema',
       'language_spanish': 'Español',
       'language_english': 'English',
@@ -98,9 +98,9 @@ class AppStrings {
       'group_create_title': 'Crear Grupo Escolar',
       // Routes (Admin)
       'routes_title': 'Planificador de Rutas',
-      'btn_define_route': 'Definir ruta',
-      'route_define_heading': 'Definir Nueva Ruta Escolar',
-      'route_name_hint': 'Nombre de la nueva ruta',
+      'btn_define_route': 'Definir ruta y paradas',
+      'route_define_heading': 'Crear Nueva Ruta',
+      'route_name_hint': 'Nombre descriptivo de la ruta',
       'route_detail_title': 'Detalle de Ruta',
       'route_not_found': 'Ruta no encontrada',
       'route_stops_heading': 'Paradas del Recorrido',
@@ -204,7 +204,7 @@ class AppStrings {
       'profile_guide_desc': 'Review app features with our guide mascot.',
       // Subscriptions
       'subscription_card_title': 'Plans & Subscription',
-      'subscription_card_subtitle': 'Family Plan Active • S/ 89/mo',
+      'subscription_card_subtitle': 'Intermediate Plan Active • S/ 99.99/mo',
       'language_card_title': 'System Language',
       'language_spanish': 'Español',
       'language_english': 'English',
@@ -254,9 +254,9 @@ class AppStrings {
       'group_create_title': 'Create Student Group',
       // Routes (Admin)
       'routes_title': 'Route Planner',
-      'btn_define_route': 'Define route',
-      'route_define_heading': 'Define New School Route',
-      'route_name_hint': 'New route name',
+      'btn_define_route': 'Define route and stops',
+      'route_define_heading': 'Create New Route',
+      'route_name_hint': 'Descriptive route name',
       'route_detail_title': 'Route Details',
       'route_not_found': 'Route not found',
       'route_stops_heading': 'Route Stops',

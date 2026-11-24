@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/driver_passenger.dart';
@@ -16,7 +19,23 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
 
   int get _boardedCount =>
       _passengers.where((p) => p.status == PassengerBoardingStatus.boarded).length;
+  int get _absentCount =>
+      _passengers.where((p) => p.status == PassengerBoardingStatus.absent).length;
   int get _totalCount => _passengers.length;
+
+  Future<void> _openNavigationWithGoogleMaps() async {
+    final url = Uri.parse('google.navigation:q=-12.0898,-77.0055&mode=d');
+    final fallbackUrl = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=-12.0898,-77.0055');
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url);
+      } else {
+        await launchUrl(fallbackUrl, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {
+      await launchUrl(fallbackUrl, mode: LaunchMode.externalApplication);
+    }
+  }
 
   void _updateStatus(DriverPassenger passenger, PassengerBoardingStatus newStatus) {
     setState(() {
@@ -274,32 +293,41 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primaryNavy.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(10),
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryNavy.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(Icons.directions_bus, color: AppTheme.primaryNavy),
                               ),
-                              child: const Icon(Icons.directions_bus, color: AppTheme.primaryNavy),
-                            ),
-                            const SizedBox(width: 10),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  AppStrings.tr('driver_route_title'),
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      AppStrings.tr('driver_route_title'),
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      AppStrings.tr('driver_route_subtitle'),
+                                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
                                 ),
-                                Text(
-                                  AppStrings.tr('driver_route_subtitle'),
-                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                                ),
-                              ],
-                            ),
-                          ],
+                              ),
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
@@ -321,9 +349,12 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          '${AppStrings.tr('driver_checklist_title')}:',
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                        Expanded(
+                          child: Text(
+                            '${AppStrings.tr('driver_checklist_title')}:',
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         Text(
                           '$_boardedCount / $_totalCount ${AppStrings.tr('driver_status_boarded').toLowerCase()}s',
@@ -349,6 +380,192 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+
+              // Interactive Route Map (Parity with Android Native)
+              Container(
+                height: 250,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Stack(
+                    children: [
+                      FlutterMap(
+                        options: const MapOptions(
+                          initialCenter: LatLng(-12.0898, -77.0055),
+                          initialZoom: 14.5,
+                        ),
+                        children: [
+                          TileLayer(
+                            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            userAgentPackageName: 'pe.edu.upc.routeguard.cross',
+                          ),
+                          PolylineLayer(
+                            polylines: [
+                              Polyline(
+                                points: const [
+                                  LatLng(-12.0850, -77.0120),
+                                  LatLng(-12.0898, -77.0055),
+                                  LatLng(-12.0950, -76.9980),
+                                  LatLng(-12.1020, -76.9920),
+                                ],
+                                strokeWidth: 4.5,
+                                color: AppTheme.primaryNavy,
+                              ),
+                            ],
+                          ),
+                          MarkerLayer(
+                            markers: [
+                              Marker(
+                                point: const LatLng(-12.0898, -77.0055),
+                                width: 44,
+                                height: 44,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white, width: 2.5),
+                                    boxShadow: const [
+                                      BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
+                                    ],
+                                  ),
+                                  child: const Icon(Icons.directions_bus, color: Colors.black, size: 22),
+                                ),
+                              ),
+                              Marker(
+                                point: const LatLng(-12.0850, -77.0120),
+                                width: 32,
+                                height: 32,
+                                child: const Icon(Icons.location_on, color: Colors.green, size: 28),
+                              ),
+                              Marker(
+                                point: const LatLng(-12.0950, -76.9980),
+                                width: 32,
+                                height: 32,
+                                child: const Icon(Icons.location_on, color: Colors.teal, size: 28),
+                              ),
+                              Marker(
+                                point: const LatLng(-12.1020, -76.9920),
+                                width: 32,
+                                height: 32,
+                                child: const Icon(Icons.school, color: AppTheme.primaryNavy, size: 28),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      Positioned(
+                        top: 12,
+                        left: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.95),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black12, blurRadius: 4),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.speed, size: 14, color: AppTheme.primaryNavy),
+                              const SizedBox(width: 4),
+                              Text(
+                                '38 km/h · En movimiento',
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryNavy),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        top: 12,
+                        right: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.95),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black12, blurRadius: 4),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(Icons.gps_fixed, size: 14, color: Colors.green),
+                              SizedBox(width: 4),
+                              Text('GPS Activo', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Next Stop Card with Google Maps Navigation Button (Parity with Android Native)
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: Colors.grey.shade300),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryNavy.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.near_me, color: AppTheme.primaryNavy, size: 20),
+                          ),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Próxima parada: Parada 1: Javier Prado Este',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                ),
+                                Text(
+                                  'En curso hacia punto de recojo · 07:15 AM',
+                                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.primaryNavy,
+                          side: const BorderSide(color: AppTheme.primaryNavy),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                        icon: const Icon(Icons.navigation_outlined, size: 16),
+                        label: const Text('Navegar con Google Maps', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        onPressed: _openNavigationWithGoogleMaps,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
 
               // Action buttons row
               Row(
@@ -506,35 +723,39 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
             ),
             const Divider(height: 20),
 
-            // Actions: If already boarded or absent, avoid redundant action buttons (Heuristic #3 fix)
+            // Actions: If already boarded or absent, provide explicit UNDO / REVERT controls (RuwaLabs Heuristic #3)
             if (passenger.status == PassengerBoardingStatus.boarded)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
                   color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.green.shade200),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.check_circle, color: Colors.green, size: 18),
+                    const Icon(Icons.check_circle, color: Colors.green, size: 20),
                     const SizedBox(width: 8),
                     const Expanded(
                       child: Text(
-                        'Abordaje confirmado a bordo',
+                        'A bordo de la unidad escolar',
                         style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.green),
                       ),
                     ),
-                    TextButton(
+                    OutlinedButton.icon(
                       onPressed: () => _updateStatus(passenger, PassengerBoardingStatus.pending),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey.shade800,
+                        side: BorderSide(color: Colors.grey.shade400),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: Text(
-                        'Modificar',
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade700, decoration: TextDecoration.underline),
+                      icon: const Icon(Icons.undo, size: 14, color: Colors.black87),
+                      label: const Text(
+                        'Deshacer (volver a Pendiente)',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
@@ -542,15 +763,15 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
               )
             else if (passenger.status == PassengerBoardingStatus.absent)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
                   color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.red.shade200),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.cancel, color: Colors.red, size: 18),
+                    const Icon(Icons.cancel, color: Colors.red, size: 20),
                     const SizedBox(width: 8),
                     const Expanded(
                       child: Text(
@@ -558,16 +779,33 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                         style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.red),
                       ),
                     ),
-                    TextButton(
-                      onPressed: () => _updateStatus(passenger, PassengerBoardingStatus.boarded),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    OutlinedButton(
+                      onPressed: () => _updateStatus(passenger, PassengerBoardingStatus.pending),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey.shade800,
+                        side: BorderSide(color: Colors.grey.shade400),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: const Text(
+                      child: const Text('Volver a Pendiente', style: TextStyle(fontSize: 11)),
+                    ),
+                    const SizedBox(width: 6),
+                    ElevatedButton.icon(
+                      onPressed: () => _updateStatus(passenger, PassengerBoardingStatus.boarded),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      icon: const Icon(Icons.check, size: 14),
+                      label: const Text(
                         'Marcar Subió',
-                        style: TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold),
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],

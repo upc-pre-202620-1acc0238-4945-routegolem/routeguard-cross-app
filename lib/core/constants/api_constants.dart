@@ -17,5 +17,5 @@ class ApiConstants {
   static const String plansEndpoint = '/plans';
   static const String subscriptionsEndpoint = '/subscriptions';
 
-  static const Duration timeout = Duration(seconds: 25);
+  static const Duration timeout = Duration(seconds: 3);
 }

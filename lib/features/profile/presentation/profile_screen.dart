@@ -185,6 +185,70 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
+                  // Authorized Caregivers Card for Parents (V-01 Doña Carmen recommendation)
+                  if (!isAdmin && !isDriver) ...[
+                    Card(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 1.5,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Row(
+                                  children: [
+                                    Icon(Icons.shield_outlined, color: AppTheme.primaryNavy, size: 20),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Cuidadores Autorizados',
+                                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                    ),
+                                  ],
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.shade50,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    'Red Familiar',
+                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Cuidadores autorizados para entrega, recepción y monitoreo en vivo con alertas:',
+                              style: TextStyle(fontSize: 12, color: Colors.black54),
+                            ),
+                            const SizedBox(height: 10),
+                            _buildCaregiverTile('Carmen López de Aljovín', 'Abuela / Cuidadora principal', '987-123-456'),
+                            const Divider(height: 12),
+                            _buildCaregiverTile('Laura Gómez', 'Madre / Apoderada titular', '999-888-777'),
+                            const SizedBox(height: 10),
+                            OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppTheme.primaryNavy,
+                                side: const BorderSide(color: AppTheme.primaryNavy),
+                                minimumSize: const Size.fromHeight(38),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              icon: const Icon(Icons.person_add, size: 16),
+                              label: const Text('Agregar cuidador autorizado', style: TextStyle(fontSize: 12)),
+                              onPressed: () => _showAddCaregiverDialog(context),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+
                   // Mode Switcher Card (Role Toggle for all 3 users: Parent, Driver, Admin)
                   Card(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -437,6 +501,88 @@ class ProfileScreen extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildCaregiverTile(String name, String relation, String phone) {
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 16,
+          backgroundColor: AppTheme.primaryNavy.withValues(alpha: 0.1),
+          child: const Icon(Icons.person, size: 16, color: AppTheme.primaryNavy),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              Text('$relation · $phone', style: const TextStyle(fontSize: 11, color: Colors.black54)),
+            ],
+          ),
+        ),
+        const Icon(Icons.verified, size: 16, color: Colors.green),
+      ],
+    );
+  }
+
+  void _showAddCaregiverDialog(BuildContext context) {
+    final nameCtrl = TextEditingController();
+    final relationCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.person_add, color: AppTheme.primaryNavy),
+            SizedBox(width: 8),
+            Text('Nuevo Cuidador', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameCtrl,
+              decoration: const InputDecoration(labelText: 'Nombre del familiar / cuidador'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: relationCtrl,
+              decoration: const InputDecoration(labelText: 'Parentesco (ej. Abuela, Tío, Papá)'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: phoneCtrl,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(labelText: 'Número celular para alertas SMS/Push'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryNavy, foregroundColor: Colors.white),
+            onPressed: () {
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('¡Cuidador ${nameCtrl.text} agregado a la red familiar con acceso a alertas!'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
     );
   }
 }

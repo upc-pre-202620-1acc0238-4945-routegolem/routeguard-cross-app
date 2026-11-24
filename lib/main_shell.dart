@@ -230,24 +230,46 @@ class _MainShellState extends State<MainShell> {
                     ),
                 ],
               ),
-              bottomNavigationBar: NavigationBar(
-                selectedIndex: _currentIndex,
-                onDestinationSelected: (index) {
-                  if (!_showTutorial) {
-                    setState(() {
-                      _currentIndex = index;
-                    });
-                  }
-                },
-                backgroundColor: Colors.white,
-                indicatorColor: AppTheme.primaryNavy.withValues(alpha: 0.15),
-                destinations: destinations.map((d) {
-                  return NavigationDestination(
-                    icon: d.icon,
-                    selectedIcon: d.selectedIcon,
-                    label: AppStrings.tr(d.labelKey),
-                  );
-                }).toList(),
+              bottomNavigationBar: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(
+                    top: BorderSide(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: destinations.length <= 3 ? 380 : 560,
+                      ),
+                      child: NavigationBar(
+                        selectedIndex: _currentIndex,
+                        onDestinationSelected: (index) {
+                          if (!_showTutorial) {
+                            setState(() {
+                              _currentIndex = index;
+                            });
+                          }
+                        },
+                        backgroundColor: Colors.transparent,
+                        elevation: 0,
+                        indicatorColor: AppTheme.primaryNavy.withValues(alpha: 0.15),
+                        destinations: destinations.map((d) {
+                          return NavigationDestination(
+                            icon: d.icon,
+                            selectedIcon: d.selectedIcon,
+                            label: AppStrings.tr(d.labelKey),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                ),
               ),
             );
           },

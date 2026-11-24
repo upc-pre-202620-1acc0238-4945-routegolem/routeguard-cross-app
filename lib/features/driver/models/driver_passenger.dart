@@ -29,7 +29,7 @@ class DriverPassenger {
         grade: 'Primaria • 4to B',
         stopAddress: 'Av. Brasil 1240, Jesús María',
         scheduledTime: '07:15 AM',
-        status: PassengerBoardingStatus.boarded,
+        status: PassengerBoardingStatus.pending,
       ),
       DriverPassenger(
         id: 'p_02',

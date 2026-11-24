@@ -17,6 +17,9 @@ class RoutesScreen extends StatefulWidget {
 class _RoutesScreenState extends State<RoutesScreen> {
   late final FleetRepository _repository;
   final _newRouteController = TextEditingController();
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+  bool _isSearching = false;
 
   List<RouteModel> _routes = [];
   bool _isLoading = true;
@@ -32,6 +35,7 @@ class _RoutesScreenState extends State<RoutesScreen> {
   @override
   void dispose() {
     _newRouteController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -80,6 +84,19 @@ class _RoutesScreenState extends State<RoutesScreen> {
       appBar: AppBar(
         title: Text(AppStrings.tr('routes_title')),
         actions: [
+          IconButton(
+            icon: Icon(_isSearching ? Icons.close : Icons.search),
+            tooltip: 'Buscar rutas',
+            onPressed: () {
+              setState(() {
+                _isSearching = !_isSearching;
+                if (!_isSearching) {
+                  _searchQuery = '';
+                  _searchController.clear();
+                }
+              });
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadRoutes,
@@ -141,17 +158,60 @@ class _RoutesScreenState extends State<RoutesScreen> {
             ),
           ),
 
+          // Search input for routes when toggled (RuwaLabs Heuristic #10)
+          if (_isSearching)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+              child: TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Buscar ruta por nombre...',
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () {
+                            setState(() {
+                              _searchQuery = '';
+                              _searchController.clear();
+                            });
+                          },
+                        )
+                      : null,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onChanged: (val) => setState(() => _searchQuery = val.trim().toLowerCase()),
+              ),
+            ),
+          const SizedBox(height: 8),
+
           // Routes List
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : RefreshIndicator(
                     onRefresh: _loadRoutes,
-                    child: ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: _routes.length,
-                      itemBuilder: (ctx, index) {
-                        final route = _routes[index];
+                    child: Builder(
+                      builder: (context) {
+                        final filteredRoutes = _routes.where((r) =>
+                            _searchQuery.isEmpty || r.name.toLowerCase().contains(_searchQuery)).toList();
+
+                        if (filteredRoutes.isEmpty) {
+                          return const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(20),
+                              child: Text('No se encontraron rutas con ese criterio.', style: TextStyle(color: Colors.grey)),
+                            ),
+                          );
+                        }
+
+                        return ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: filteredRoutes.length,
+                          itemBuilder: (ctx, index) {
+                            final route = filteredRoutes[index];
                         final isDraft = route.isEditable;
                         final statusLabel = isDraft
                             ? AppStrings.tr('route_status_draft')
@@ -220,9 +280,11 @@ class _RoutesScreenState extends State<RoutesScreen> {
                           ),
                         );
                       },
-                    ),
-                  ),
-          ),
+                    );
+                  },
+                ),
+              ),
+            ),
         ],
       ),
     );

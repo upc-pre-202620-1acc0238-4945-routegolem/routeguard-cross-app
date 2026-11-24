@@ -132,6 +132,212 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  void _showRegisterAccountDialog() {
+    final nameCtrl = TextEditingController();
+    final emailCtrl = TextEditingController();
+    final passCtrl = TextEditingController();
+    String selectedRole = 'PARENT';
+    bool acceptedTerms = false;
+    String? registerError;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Container(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              left: 20,
+              right: 20,
+              top: 20,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryNavy.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.person_add_alt_1, color: AppTheme.primaryNavy),
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Crear cuenta en RouteGuard',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryNavy),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  if (registerError != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.errorContainer,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(registerError!, style: const TextStyle(color: AppTheme.errorColor, fontSize: 12)),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  TextFormField(
+                    controller: nameCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'Nombre completo',
+                      prefixIcon: const Icon(Icons.person_outline),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: emailCtrl,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      labelText: 'Correo electrónico',
+                      prefixIcon: const Icon(Icons.email_outlined),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: passCtrl,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: 'Contraseña (mínimo 6 caracteres)',
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedRole,
+                    decoration: InputDecoration(
+                      labelText: 'Rol institucional',
+                      prefixIcon: const Icon(Icons.badge_outlined),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'PARENT', child: Text('Apoderado / Padre de Familia')),
+                      DropdownMenuItem(value: 'DRIVER', child: Text('Conductor / Transportista Escolar')),
+                      DropdownMenuItem(value: 'ADMINISTRATOR', child: Text('Administrador / Dueño de Movilidad')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) setModalState(() => selectedRole = val);
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    value: acceptedTerms,
+                    onChanged: (v) => setModalState(() => acceptedTerms = v ?? false),
+                    title: Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        const Text('Acepto los ', style: TextStyle(fontSize: 12)),
+                        GestureDetector(
+                          onTap: _showTermsDialog,
+                          child: const Text(
+                            'Términos y Condiciones',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.primaryNavy,
+                              fontWeight: FontWeight.bold,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryNavy,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: !acceptedTerms
+                        ? null
+                        : () async {
+                            final name = nameCtrl.text.trim();
+                            final email = emailCtrl.text.trim();
+                            final pass = passCtrl.text;
+                            if (name.isEmpty || email.isEmpty || !email.contains('@') || pass.length < 6) {
+                              setModalState(() {
+                                registerError = 'Por favor completa todos los campos válidos.';
+                              });
+                              return;
+                            }
+                            final messenger = ScaffoldMessenger.of(context);
+                            final onAuth = widget.onAuthenticated;
+                            Navigator.pop(ctx);
+                            await widget.sessionManager.saveSession(
+                              token: 'demo-token-reg-${DateTime.now().millisecondsSinceEpoch}',
+                              userId: 'u-${DateTime.now().millisecondsSinceEpoch}',
+                              fullName: name,
+                              email: email,
+                              role: selectedRole,
+                              organizationId: 'org-routeguard-peru',
+                            );
+                            if (mounted) {
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text('¡Cuenta creada exitosamente! Bienvenido, $name.'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                              onAuth();
+                            }
+                          },
+                    child: const Text('Registrar y Comenzar', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(height: 8),
+                  Center(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text(
+                        '¿Ya tienes cuenta? Inicia sesión',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppTheme.primaryNavy,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -382,6 +588,34 @@ class _LoginScreenState extends State<LoginScreen> {
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Secondary action: Create Account (RuwaLabs Flutter Heuristic #1 fix)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                '¿No tienes cuenta? ',
+                                style: TextStyle(fontSize: 13, color: Colors.black87),
+                              ),
+                              TextButton(
+                                onPressed: _showRegisterAccountDialog,
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: const Text(
+                                  'Crear cuenta',
+                                  style: TextStyle(
+                                    color: AppTheme.primaryNavy,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),

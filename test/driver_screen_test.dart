@@ -11,11 +11,16 @@ void main() {
 
     testWidgets('DriverTripScreen renders route header and passenger list',
         (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
       await tester.pumpWidget(
         const MaterialApp(
           home: DriverTripScreen(),
         ),
       );
+      await tester.pumpAndSettle();
 
       // Verify route header
       expect(find.text('Ruta 02 - Turno Mañana'), findsAtLeastNWidgets(1));
@@ -32,13 +37,18 @@ void main() {
     });
 
     testWidgets('tapping Subió updates boarding status', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
       await tester.pumpWidget(
         const MaterialApp(
           home: DriverTripScreen(),
         ),
       );
+      await tester.pumpAndSettle();
 
-      // Tap on the first 'Subió' button
+      // Tap on the first pending student's 'Subió' button
       final boardedButtons = find.widgetWithText(ElevatedButton, 'Subió');
       expect(boardedButtons, findsWidgets);
 

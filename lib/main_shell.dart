@@ -215,10 +215,13 @@ class _MainShellState extends State<MainShell> {
           builder: (context, lang, _) {
             return Scaffold(
               body: Stack(
+                fit: StackFit.expand,
                 children: [
-                  IndexedStack(
-                    index: _currentIndex,
-                    children: destinations.map((d) => d.screen).toList(),
+                  Positioned.fill(
+                    child: IndexedStack(
+                      index: _currentIndex,
+                      children: destinations.map((d) => d.screen).toList(),
+                    ),
                   ),
                   if (_showTutorial)
                     AssistantGuideOverlay(

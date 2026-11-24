@@ -22,8 +22,8 @@ void main() {
       expect(find.text('Planificador de Rutas'), findsOneWidget);
 
       // Verify Define Route input & button
-      expect(find.text('Definir Nueva Ruta Escolar'), findsOneWidget);
-      expect(find.text('Definir ruta'), findsOneWidget);
+      expect(find.text('Crear Nueva Ruta'), findsOneWidget);
+      expect(find.text('Definir ruta y paradas'), findsOneWidget);
 
       // Verify Existing Routes
       expect(find.text('Ruta 01 - Primaria San Borja'), findsOneWidget);
@@ -39,13 +39,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Enter new route name
+      // Enter new route name into first textfield (route creation)
       final inputFinder = find.byType(TextField);
-      expect(inputFinder, findsOneWidget);
-      await tester.enterText(inputFinder, 'Ruta 05 - Turno Especial');
+      expect(inputFinder, findsWidgets);
+      await tester.enterText(inputFinder.first, 'Ruta 05 - Turno Especial');
 
-      // Tap Definir ruta button
-      final btnFinder = find.widgetWithText(ElevatedButton, 'Definir ruta');
+      // Tap Definir ruta y paradas button
+      final btnFinder = find.widgetWithText(ElevatedButton, 'Definir ruta y paradas');
       await tester.tap(btnFinder);
       await tester.pumpAndSettle();
 

@@ -8,32 +8,32 @@ void main() {
 
       expect(plans.length, 3);
       expect(plans[0].id, 'plan_basic');
-      expect(plans[1].id, 'plan_family');
-      expect(plans[2].id, 'plan_premium');
+      expect(plans[1].id, 'plan_intermediate');
+      expect(plans[2].id, 'plan_complete');
     });
 
     test('prices and billing periods match official institutional rates', () {
       final plans = SubscriptionPlan.getAvailablePlans();
 
       final basic = plans.firstWhere((p) => p.id == 'plan_basic');
-      final family = plans.firstWhere((p) => p.id == 'plan_family');
-      final premium = plans.firstWhere((p) => p.id == 'plan_premium');
+      final intermediate = plans.firstWhere((p) => p.id == 'plan_intermediate');
+      final complete = plans.firstWhere((p) => p.id == 'plan_complete');
 
-      expect(basic.priceSoles, 49.00);
-      expect(family.priceSoles, 89.00);
-      expect(premium.priceSoles, 199.00);
+      expect(basic.priceSoles, 49.99);
+      expect(intermediate.priceSoles, 99.99);
+      expect(complete.priceSoles, 179.99);
 
       expect(basic.billingPeriod, 'mes');
-      expect(family.billingPeriod, 'mes');
-      expect(premium.billingPeriod, 'mes');
+      expect(intermediate.billingPeriod, 'mes');
+      expect(complete.billingPeriod, 'mes');
     });
 
-    test('family plan is marked as popular with badge', () {
+    test('intermediate plan is marked as popular with badge', () {
       final plans = SubscriptionPlan.getAvailablePlans();
-      final family = plans.firstWhere((p) => p.id == 'plan_family');
+      final intermediate = plans.firstWhere((p) => p.id == 'plan_intermediate');
 
-      expect(family.isPopular, isTrue);
-      expect(family.badgeText, 'MÁS POPULAR');
+      expect(intermediate.isPopular, isTrue);
+      expect(intermediate.badgeText, 'PLAN ACTUAL');
     });
 
     test('all plans include non-empty core features', () {

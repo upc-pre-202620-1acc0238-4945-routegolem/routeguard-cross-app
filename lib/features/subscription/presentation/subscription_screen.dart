@@ -23,7 +23,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   @override
   void initState() {
     super.initState();
-    _activePlanId = widget.currentPlanId ?? 'plan_family';
+    _activePlanId = widget.currentPlanId ?? 'plan_intermediate';
   }
 
   void _showStripePaymentModal(SubscriptionPlan plan) {
@@ -292,61 +292,75 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     return Scaffold(
       backgroundColor: AppTheme.surfaceBackground,
       appBar: AppBar(
-        title: const Text('Planes y Suscripción'),
+        title: const Text('Planes de Suscripción'),
         elevation: 0,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppTheme.primaryNavy, Color(0xFF2C5282)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
+          // Active Subscription Status Card (Matches Android Native exactly)
+          Card(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: Colors.grey.shade300),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(10),
+            elevation: 2,
+            color: Colors.white,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Plan Intermedio',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryNavy,
+                        ),
                       ),
-                      child: const Icon(Icons.workspace_premium, color: Colors.amber, size: 28),
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Seguridad Escolar Total',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 17,
-                              fontWeight: FontWeight.bold,
-                            ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD1FAE5),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'Activo',
+                          style: TextStyle(
+                            color: Color(0xFF064E3B),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
                           ),
-                          Text(
-                            'Elige el plan ideal para tu familia o institución.',
-                            style: TextStyle(color: Colors.white70, fontSize: 13),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Tu suscripción se encuentra activa. Quedan 28 días de vigencia en el periodo actual.',
+                    style: TextStyle(color: Color(0xFF475569), fontSize: 13),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 16),
+
+          // Section Title: Planes Disponibles
+          Text(
+            'Planes Disponibles',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: AppTheme.primaryNavy,
+            ),
+          ),
+          const SizedBox(height: 12),
+
           ..._plans.map((plan) {
             final isCurrent = plan.id == _activePlanId;
             return _buildPlanCard(plan, isCurrent);
@@ -378,14 +392,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         borderRadius: BorderRadius.circular(18),
         side: BorderSide(
           color: isCurrent
-              ? AppTheme.primaryTeal
-              : plan.isPopular
-                  ? AppTheme.primaryNavy.withValues(alpha: 0.4)
-                  : Colors.grey.shade200,
+              ? AppTheme.primaryNavy
+              : Colors.grey.shade300,
           width: isCurrent ? 2.0 : 1.0,
         ),
       ),
-      elevation: isCurrent ? 3 : 1,
+      elevation: isCurrent ? 2 : 1,
+      color: Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
@@ -397,53 +410,32 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 Expanded(
                   child: Text(
                     plan.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: AppTheme.primaryNavy,
                     ),
                   ),
                 ),
-                if (plan.isPopular)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.shade100,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      plan.badgeText,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.amber.shade900,
-                      ),
-                    ),
-                  ),
                 if (isCurrent)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryTeal.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
+                      color: const Color(0xFFD1FAE5),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Text(
-                      'PLAN ACTUAL',
+                      'Plan Actual',
                       style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        color: AppTheme.primaryTeal,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF064E3B),
                       ),
                     ),
                   ),
               ],
             ),
-            const SizedBox(height: 6),
-            Text(
-              plan.description,
-              style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
-            ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 8),
             Row(
               crossAxisAlignment: CrossAxisAlignment.baseline,
               textBaseline: TextBaseline.alphabetic,
@@ -451,9 +443,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 Text(
                   'S/ ${plan.priceSoles.toStringAsFixed(2)}',
                   style: const TextStyle(
-                    fontSize: 26,
+                    fontSize: 22,
                     fontWeight: FontWeight.w900,
-                    color: AppTheme.primaryNavy,
+                    color: Colors.black87,
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -470,7 +462,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.check_circle_rounded, size: 18, color: AppTheme.primaryTeal),
+                    const Icon(Icons.check, size: 18, color: Color(0xFF059669)),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -485,21 +477,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton.icon(
+              child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isCurrent ? Colors.grey.shade300 : AppTheme.primaryNavy,
-                  foregroundColor: isCurrent ? Colors.black87 : Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  backgroundColor: isCurrent ? AppTheme.primaryNavy : const Color(0xFF334155),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: isCurrent ? null : () => _showStripePaymentModal(plan),
-                icon: Icon(
-                  isCurrent ? Icons.check : Icons.payment,
-                  size: 18,
-                ),
-                label: Text(
-                  isCurrent ? 'Plan suscrito' : 'Suscribirse con Stripe',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                onPressed: () => _showStripePaymentModal(plan),
+                child: Text(
+                  isCurrent ? 'Renovar suscripción con Stripe' : 'Cambiar a este plan con Stripe',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                 ),
               ),
             ),

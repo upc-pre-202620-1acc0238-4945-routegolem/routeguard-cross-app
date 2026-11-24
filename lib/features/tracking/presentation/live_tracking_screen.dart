@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/session_manager.dart';
 import '../data/tracking_repository.dart';
@@ -133,46 +134,24 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     );
   }
 
-  void _callDriver() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.phone_in_talk, color: Colors.green),
-            SizedBox(width: 10),
-            Text('Contactar Conductor', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          ],
-        ),
-        content: Text(
-          'Llamando a ${_telemetry?.driverName ?? "Carlos Ramírez"} (+51 987 654 321). En situaciones de conducción asistida, las comunicaciones prioritarias se atienden vía manos libres.',
-          style: const TextStyle(fontSize: 13, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cerrar'),
+  Future<void> _callDriver() async {
+    final phoneUri = Uri.parse('tel:+51987654321');
+    try {
+      if (await canLaunchUrl(phoneUri)) {
+        await launchUrl(phoneUri);
+      } else {
+        await launchUrl(phoneUri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Marcando al conductor: +51 987 654 321'),
+            backgroundColor: Colors.green,
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Llamada conectada en manos libres con el transportista.'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            },
-            child: const Text('Llamar'),
-          ),
-        ],
-      ),
-    );
+        );
+      }
+    }
   }
 
   void _showStopsSheet() {
@@ -561,6 +540,26 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                                   child: const Text('Itinerario', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                                 ),
                               ],
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+
+                          // Prominent Call Button (Parity with Android Native BigButton)
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF047857),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              icon: const Icon(Icons.call, size: 18),
+                              label: Text(
+                                'Llamar al conductor (${_telemetry?.driverName ?? "Carlos Ramírez"})',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                              onPressed: _callDriver,
                             ),
                           ),
                         ],

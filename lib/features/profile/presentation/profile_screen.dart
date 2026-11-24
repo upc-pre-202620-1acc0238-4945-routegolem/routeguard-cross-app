@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/session_manager.dart';
@@ -15,6 +17,149 @@ class ProfileScreen extends StatelessWidget {
     required this.onSignedOut,
     this.onLaunchTutorial,
   });
+
+  void _showAvatarPickerSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Foto de Perfil',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryNavy),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Selecciona una opción para actualizar la imagen de tu cuenta:',
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryNavy.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.camera_alt_outlined, color: AppTheme.primaryNavy),
+                  ),
+                  title: const Text('Tomar foto con la cámara', style: TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: const Text('Captura una nueva fotografía instantánea'),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    try {
+                      final picker = ImagePicker();
+                      final image = await picker.pickImage(
+                        source: ImageSource.camera,
+                        maxWidth: 800,
+                        maxHeight: 800,
+                        imageQuality: 85,
+                      );
+                      if (image != null) {
+                        await sessionManager.setAvatarPath(image.path);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('¡Foto de perfil actualizada desde la cámara!'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('No se pudo acceder a la cámara: $e')),
+                        );
+                      }
+                    }
+                  },
+                ),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.teal.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.photo_library_outlined, color: Colors.teal),
+                  ),
+                  title: const Text('Elegir de la galería o archivos', style: TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: const Text('Selecciona una imagen guardada en tu dispositivo'),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    try {
+                      final picker = ImagePicker();
+                      final image = await picker.pickImage(
+                        source: ImageSource.gallery,
+                        maxWidth: 800,
+                        maxHeight: 800,
+                        imageQuality: 85,
+                      );
+                      if (image != null) {
+                        await sessionManager.setAvatarPath(image.path);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('¡Foto de perfil seleccionada de archivos exitosamente!'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('No se pudo acceder a los archivos: $e')),
+                        );
+                      }
+                    }
+                  },
+                ),
+                if (sessionManager.avatarPath != null)
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.delete_outline, color: Colors.red),
+                    ),
+                    title: const Text('Eliminar foto / Restablecer iniciales',
+                        style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      await sessionManager.setAvatarPath(null);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Foto de perfil eliminada.')),
+                        );
+                      }
+                    },
+                  ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   void _confirmSignOut(BuildContext context) {
     showDialog(
@@ -108,17 +253,51 @@ class ProfileScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
                       child: Column(
                         children: [
-                          CircleAvatar(
-                            radius: 36,
-                            backgroundColor: roleColor.withValues(alpha: 0.12),
-                            child: Text(
-                              initials.isEmpty ? 'RG' : initials,
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: roleColor,
-                              ),
-                            ),
+                          ValueListenableBuilder<String?>(
+                            valueListenable: SessionManager.avatarPathNotifier,
+                            builder: (context, avatarPath, _) {
+                              final hasValidImage = avatarPath != null && File(avatarPath).existsSync();
+
+                              return GestureDetector(
+                                onTap: () => _showAvatarPickerSheet(context),
+                                child: Stack(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 40,
+                                      backgroundColor: roleColor.withValues(alpha: 0.12),
+                                      backgroundImage: hasValidImage ? FileImage(File(avatarPath)) : null,
+                                      child: hasValidImage
+                                          ? null
+                                          : Text(
+                                              initials.isEmpty ? 'RG' : initials,
+                                              style: TextStyle(
+                                                fontSize: 24,
+                                                fontWeight: FontWeight.bold,
+                                                color: roleColor,
+                                              ),
+                                            ),
+                                    ),
+                                    Positioned(
+                                      bottom: 0,
+                                      right: 0,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.primaryNavy,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(color: Colors.white, width: 2),
+                                        ),
+                                        child: const Icon(
+                                          Icons.camera_alt,
+                                          size: 14,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
                           ),
                           const SizedBox(height: 14),
                           Text(

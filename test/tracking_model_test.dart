@@ -25,6 +25,37 @@ void main() {
       expect(telemetry.onboardStudents, 4);
     });
 
+    test('creates TripTelemetry from backend LiveTripResource (nested location, boardedCount)', () {
+      final backendJson = {
+        'tripId': 'TRP-LIVE-200',
+        'routeName': 'Ruta 01 - Primaria San Borja',
+        'driverName': 'Carlos Ramírez',
+        'vehiclePlate': 'ABC-789',
+        'location': {
+          'latitude': -12.0920,
+          'longitude': -77.0280,
+          'speedKmh': 38.5,
+          'recordedAt': 1700000000000,
+        },
+        'status': 'IN_PROGRESS',
+        'totalChildren': 15,
+        'boardedCount': 8,
+        'nextStopName': 'Colegio San Juan',
+        'etaNextStopMinutes': 5,
+      };
+
+      final telemetry = TripTelemetry.fromJson(backendJson);
+
+      expect(telemetry.tripId, 'TRP-LIVE-200');
+      expect(telemetry.currentLatitude, -12.0920);
+      expect(telemetry.currentLongitude, -77.0280);
+      expect(telemetry.speedKmh, 38.5);
+      expect(telemetry.totalStudents, 15);
+      expect(telemetry.onboardStudents, 8);
+      expect(telemetry.nextStopName, 'Colegio San Juan');
+      expect(telemetry.etaNextStopMinutes, 5);
+    });
+
     test('creates StudentStop from valid json', () {
       final json = {
         'id': 'stp-05',

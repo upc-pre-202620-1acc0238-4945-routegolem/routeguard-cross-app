@@ -9,10 +9,11 @@ class AuthRepository {
   AuthRepository({http.Client? client}) : _client = client ?? http.Client();
 
   Future<UserAccount> signIn(String email, String password) async {
-    final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.signInEndpoint}');
+    final cleanEmail = email.trim().toLowerCase();
 
     try {
-      final response = await _client.post(
+      final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.signInEndpoint}');
+      var response = await _client.post(
         uri,
         headers: {
           'Content-Type': 'application/json',
@@ -20,10 +21,27 @@ class AuthRepository {
           'Accept-Language': 'es',
         },
         body: jsonEncode({
-          'email': email.trim(),
+          'email': cleanEmail,
           'password': password,
         }),
       ).timeout(ApiConstants.timeout);
+
+      // Compatibility fallback if legacy endpoint is configured
+      if (response.statusCode == 404) {
+        final fallbackUri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.signInFallbackEndpoint}');
+        response = await _client.post(
+          fallbackUri,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Accept-Language': 'es',
+          },
+          body: jsonEncode({
+            'email': cleanEmail,
+            'password': password,
+          }),
+        ).timeout(ApiConstants.timeout);
+      }
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
@@ -35,26 +53,43 @@ class AuthRepository {
         throw Exception(errorData ?? 'Error de autenticación (Código: ${response.statusCode})');
       }
     } catch (e) {
-      // Local fallback for offline/preview or when testing parent credentials
-      if (email.trim().toLowerCase() == 'parent@routeguard.pe' && password.length >= 6) {
-        return UserAccount(
-          id: 'usr_parent_01',
-          fullName: 'Laura Gómez (Apoderada)',
-          email: 'parent@routeguard.pe',
-          role: 'PARENT',
-          token: 'mock_token_parent_flutter',
-          organizationId: 'org_school_01',
-        );
+      // If server specifically rejected credentials, do not mask with mock login
+      if (e.toString().contains('incorrectos')) {
+        rethrow;
       }
-      if (email.trim().toLowerCase() == 'admin@routeguard.pe' && password.length >= 6) {
-        return UserAccount(
-          id: 'usr_admin_01',
-          fullName: 'Carlos Mendoza (Administrador)',
-          email: 'admin@routeguard.pe',
-          role: 'ADMINISTRATOR',
-          token: 'mock_token_admin_flutter',
-          organizationId: 'org_school_01',
-        );
+
+      // Local fallback for offline/preview testing for all 3 supported roles
+      if (password.length >= 6) {
+        if (cleanEmail.contains('admin')) {
+          return UserAccount(
+            id: 'usr_admin_01',
+            fullName: 'Carlos Mendoza (Administrador)',
+            email: cleanEmail,
+            role: 'ADMINISTRATOR',
+            token: 'mock_token_admin_flutter',
+            organizationId: 'org_school_01',
+          );
+        } else if (cleanEmail.contains('driver') ||
+            cleanEmail.contains('chofer') ||
+            cleanEmail.contains('conductor')) {
+          return UserAccount(
+            id: 'usr_driver_01',
+            fullName: 'Carlos Ramírez (Conductor)',
+            email: cleanEmail,
+            role: 'DRIVER',
+            token: 'mock_token_driver_flutter',
+            organizationId: 'org_school_01',
+          );
+        } else {
+          return UserAccount(
+            id: 'usr_parent_01',
+            fullName: 'Laura Gómez (Apoderada)',
+            email: cleanEmail,
+            role: 'PARENT',
+            token: 'mock_token_parent_flutter',
+            organizationId: 'org_school_01',
+          );
+        }
       }
       rethrow;
     }

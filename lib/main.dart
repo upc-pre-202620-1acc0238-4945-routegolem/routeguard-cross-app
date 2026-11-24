@@ -44,7 +44,7 @@ class _RouteGuardCrossAppState extends State<RouteGuardCrossApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'RouteGuard Parent',
+      title: 'RouteGuard',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       home: _isAuthenticated

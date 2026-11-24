@@ -8,13 +8,14 @@ class SessionManager {
   static const String _keyEmail = 'email';
   static const String _keyRole = 'role';
   static const String _keyOrganizationId = 'organization_id';
+  static const String _keySeenTutorialPrefix = 'seen_tutorial_';
 
   static final ValueNotifier<String> activeRoleNotifier = ValueNotifier<String>('PARENT');
 
   final SharedPreferences _prefs;
 
   SessionManager(this._prefs) {
-    activeRoleNotifier.value = _prefs.getString(_keyRole) ?? 'PARENT';
+    activeRoleNotifier.value = normalizeRole(_prefs.getString(_keyRole) ?? 'PARENT');
   }
 
   static Future<SessionManager> create() async {
@@ -30,27 +31,47 @@ class SessionManager {
     required String role,
     required String organizationId,
   }) async {
+    final normalizedRole = normalizeRole(role);
     await _prefs.setString(_keyToken, token);
     await _prefs.setString(_keyUserId, userId);
     await _prefs.setString(_keyFullName, fullName);
     await _prefs.setString(_keyEmail, email);
-    await _prefs.setString(_keyRole, role);
+    await _prefs.setString(_keyRole, normalizedRole);
     await _prefs.setString(_keyOrganizationId, organizationId);
-    activeRoleNotifier.value = role;
+    activeRoleNotifier.value = normalizedRole;
+  }
+
+  static String normalizeRole(String role) {
+    final upper = role.trim().toUpperCase();
+    if (upper == 'ADMIN' || upper == 'ADMINISTRATOR') return 'ADMINISTRATOR';
+    if (upper == 'DRIVER') return 'DRIVER';
+    return 'PARENT';
   }
 
   String? get token => _prefs.getString(_keyToken);
   String? get userId => _prefs.getString(_keyUserId);
-  String get fullName => _prefs.getString(_keyFullName) ?? 'Padre de Familia';
+  String get fullName => _prefs.getString(_keyFullName) ?? 'Usuario RouteGuard';
   String get email => _prefs.getString(_keyEmail) ?? '';
-  String get role => _prefs.getString(_keyRole) ?? 'PARENT';
+  String get role => normalizeRole(_prefs.getString(_keyRole) ?? 'PARENT');
   String get organizationId => _prefs.getString(_keyOrganizationId) ?? 'org_school_01';
 
   bool get isAuthenticated => token != null && token!.isNotEmpty;
+  bool get isAdmin => role == 'ADMINISTRATOR';
+  bool get isDriver => role == 'DRIVER';
+  bool get isParent => role == 'PARENT';
+
+  bool hasSeenTutorial(String userId) {
+    return _prefs.getBool('$_keySeenTutorialPrefix$userId') ?? false;
+  }
+
+  Future<void> setTutorialSeen(String userId, bool seen) async {
+    await _prefs.setBool('$_keySeenTutorialPrefix$userId', seen);
+  }
 
   Future<void> setRole(String newRole) async {
-    await _prefs.setString(_keyRole, newRole);
-    activeRoleNotifier.value = newRole;
+    final normalized = normalizeRole(newRole);
+    await _prefs.setString(_keyRole, normalized);
+    activeRoleNotifier.value = normalized;
   }
 
   Future<void> clearSession() async {

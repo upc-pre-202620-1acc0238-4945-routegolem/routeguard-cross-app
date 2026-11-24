@@ -7,11 +7,13 @@ import '../../subscription/presentation/subscription_screen.dart';
 class ProfileScreen extends StatelessWidget {
   final SessionManager sessionManager;
   final VoidCallback onSignedOut;
+  final VoidCallback? onLaunchTutorial;
 
   const ProfileScreen({
     super.key,
     required this.sessionManager,
     required this.onSignedOut,
+    this.onLaunchTutorial,
   });
 
   void _confirmSignOut(BuildContext context) {
@@ -52,17 +54,42 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initials = sessionManager.fullName
-        .split(' ')
-        .where((s) => s.isNotEmpty)
-        .take(2)
-        .map((s) => s[0].toUpperCase())
-        .join();
-
     return ValueListenableBuilder<String>(
       valueListenable: SessionManager.activeRoleNotifier,
       builder: (context, activeRole, _) {
-        final isDriver = activeRole == 'DRIVER';
+        final normalizedRole = SessionManager.normalizeRole(activeRole);
+        final isAdmin = normalizedRole == 'ADMINISTRATOR';
+        final isDriver = normalizedRole == 'DRIVER';
+
+        final roleLabel = isAdmin
+            ? AppStrings.tr('profile_role_admin')
+            : isDriver
+                ? AppStrings.tr('profile_role_driver')
+                : AppStrings.tr('profile_role_parent');
+
+        final roleColor = isAdmin
+            ? Colors.indigo
+            : isDriver
+                ? Colors.orange
+                : AppTheme.primaryNavy;
+
+        final hasCustomName = sessionManager.fullName.isNotEmpty &&
+            sessionManager.fullName != 'Usuario RouteGuard';
+
+        final displayName = hasCustomName
+            ? sessionManager.fullName
+            : (isAdmin
+                ? 'Carlos Mendoza (Admin)'
+                : isDriver
+                    ? 'Carlos Ramírez (Chofer)'
+                    : 'Laura Gómez (Apoderada)');
+
+        final initials = displayName
+            .split(' ')
+            .where((s) => s.isNotEmpty)
+            .take(2)
+            .map((s) => s[0].toUpperCase())
+            .join();
 
         return ValueListenableBuilder<AppLanguage>(
           valueListenable: AppStrings.currentLanguage,
@@ -83,36 +110,34 @@ class ProfileScreen extends StatelessWidget {
                         children: [
                           CircleAvatar(
                             radius: 36,
-                            backgroundColor: AppTheme.primaryNavy.withValues(alpha: 0.12),
+                            backgroundColor: roleColor.withValues(alpha: 0.12),
                             child: Text(
                               initials.isEmpty ? 'RG' : initials,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
-                                color: AppTheme.primaryNavy,
+                                color: roleColor,
                               ),
                             ),
                           ),
                           const SizedBox(height: 14),
                           Text(
-                            sessionManager.fullName,
+                            displayName,
                             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 6),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                             decoration: BoxDecoration(
-                              color: (isDriver ? Colors.orange : AppTheme.primaryNavy).withValues(alpha: 0.1),
+                              color: roleColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              isDriver
-                                  ? AppStrings.tr('profile_role_driver')
-                                  : AppStrings.tr('profile_role_parent'),
+                              roleLabel,
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: isDriver ? Colors.orange.shade900 : AppTheme.primaryNavy,
+                                color: roleColor,
                               ),
                             ),
                           ),
@@ -122,21 +147,37 @@ class ProfileScreen extends StatelessWidget {
                           _buildProfileRow(
                             Icons.email_outlined,
                             AppStrings.tr('profile_email'),
-                            sessionManager.email,
+                            sessionManager.email.isNotEmpty
+                                ? sessionManager.email
+                                : (isAdmin
+                                    ? 'admin@routeguard.pe'
+                                    : isDriver
+                                        ? 'driver@routeguard.pe'
+                                        : 'parent@routeguard.pe'),
                           ),
                           const SizedBox(height: 12),
                           _buildProfileRow(
                             Icons.location_on_outlined,
                             AppStrings.tr('profile_institution'),
-                            'Colegio San Juan (org_school_01)',
+                            'Colegio San Juan (${sessionManager.organizationId})',
                           ),
                           const SizedBox(height: 12),
                           _buildProfileRow(
-                            isDriver ? Icons.directions_bus : Icons.child_care,
-                            isDriver ? 'Unidad móvil asignada' : AppStrings.tr('profile_student'),
-                            isDriver
-                                ? 'Mercedes-Benz Sprinter • ABC-789'
-                                : 'Mateo Gómez (Primaria - 4to B)',
+                            isAdmin
+                                ? Icons.domain
+                                : isDriver
+                                    ? Icons.directions_bus
+                                    : Icons.child_care,
+                            isAdmin
+                                ? 'Organización gestora'
+                                : isDriver
+                                    ? 'Unidad móvil asignada'
+                                    : AppStrings.tr('profile_student'),
+                            isAdmin
+                                ? 'Movilidades Escolares San Juan SAC'
+                                : isDriver
+                                    ? 'Mercedes-Benz Sprinter • ABC-789'
+                                    : 'Mateo Gómez (Primaria - 4to B)',
                           ),
                         ],
                       ),
@@ -144,12 +185,12 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // Mode Switcher Card (Role Toggle: Parent <-> Driver)
+                  // Mode Switcher Card (Role Toggle for all 3 users: Parent, Driver, Admin)
                   Card(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     elevation: 1.5,
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -173,9 +214,11 @@ class ProfileScreen extends StatelessWidget {
                                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                                     ),
                                     Text(
-                                      isDriver
-                                          ? AppStrings.tr('driver_mode_driver')
-                                          : AppStrings.tr('driver_mode_parent'),
+                                      isAdmin
+                                          ? AppStrings.tr('driver_mode_admin')
+                                          : isDriver
+                                              ? AppStrings.tr('driver_mode_driver')
+                                              : AppStrings.tr('driver_mode_parent'),
                                       style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                                     ),
                                   ],
@@ -183,23 +226,28 @@ class ProfileScreen extends StatelessWidget {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 14),
                           SizedBox(
                             width: double.infinity,
                             child: SegmentedButton<String>(
                               segments: const [
                                 ButtonSegment<String>(
                                   value: 'PARENT',
-                                  icon: Icon(Icons.family_restroom, size: 18),
-                                  label: Text('Padre / Apoderado', style: TextStyle(fontSize: 12)),
+                                  icon: Icon(Icons.family_restroom, size: 16),
+                                  label: Text('Apoderado', style: TextStyle(fontSize: 11)),
                                 ),
                                 ButtonSegment<String>(
                                   value: 'DRIVER',
-                                  icon: Icon(Icons.directions_bus, size: 18),
-                                  label: Text('Conductor', style: TextStyle(fontSize: 12)),
+                                  icon: Icon(Icons.directions_bus, size: 16),
+                                  label: Text('Conductor', style: TextStyle(fontSize: 11)),
+                                ),
+                                ButtonSegment<String>(
+                                  value: 'ADMINISTRATOR',
+                                  icon: Icon(Icons.admin_panel_settings, size: 16),
+                                  label: Text('Admin / Dueño', style: TextStyle(fontSize: 11)),
                                 ),
                               ],
-                              selected: {activeRole},
+                              selected: {normalizedRole},
                               onSelectionChanged: (newSelection) async {
                                 await sessionManager.setRole(newSelection.first);
                               },
@@ -207,6 +255,33 @@ class ProfileScreen extends StatelessWidget {
                           ),
                         ],
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Assistant Mascot Guide Launcher Card
+                  Card(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 1.5,
+                    child: ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryNavy.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.help_outline, color: AppTheme.primaryNavy),
+                      ),
+                      title: Text(
+                        AppStrings.tr('profile_guide_action'),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      subtitle: Text(
+                        AppStrings.tr('profile_guide_desc'),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                      onTap: onLaunchTutorial,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -325,7 +400,7 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
 
-                  // Sign Out Button (Nielsen Heuristic #4)
+                  // Sign Out Button
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppTheme.errorColor,

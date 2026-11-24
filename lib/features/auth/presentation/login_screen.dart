@@ -35,6 +35,14 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  void _selectDemoUser(String email, String roleName) {
+    setState(() {
+      _emailController.text = email;
+      _passwordController.text = 'password123';
+      _errorMessage = null;
+    });
+  }
+
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -91,6 +99,28 @@ class _LoginScreenState extends State<LoginScreen> {
         content: const Text(
           'Por políticas de seguridad y privacidad escolar, para restablecer tus credenciales por favor contacta al administrador de tu institución educativa o escribe a soporte@routeguard.pe.',
           style: TextStyle(fontSize: 14, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Entendido', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTermsDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Términos y Condiciones de RouteGuard', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+        content: const SingleChildScrollView(
+          child: Text(
+            'RouteGuard garantiza la confidencialidad y protección de los datos de menores, padres de familia y conductores conforme a las leyes de protección de datos personales. Al utilizar este servicio, aceptas el monitoreo GPS pasivo de las unidades vehiculares exclusivamente durante el horario escolar para garantizar la seguridad del traslado.',
+            style: TextStyle(fontSize: 13, height: 1.4),
+          ),
         ),
         actions: [
           TextButton(
@@ -160,7 +190,49 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: Colors.black54,
                     ),
                   ),
-                  const SizedBox(height: 36),
+                  const SizedBox(height: 20),
+
+                  // Quick Demo User Selector Chips (All 3 roles)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryNavy.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppTheme.primaryNavy.withValues(alpha: 0.12)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Acceso Rápido Demo (3 Roles):',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryNavy),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          children: [
+                            ActionChip(
+                              avatar: const Icon(Icons.family_restroom, size: 16, color: AppTheme.primaryNavy),
+                              label: const Text('Apoderado', style: TextStyle(fontSize: 12)),
+                              onPressed: () => _selectDemoUser('parent@routeguard.pe', 'Apoderado'),
+                            ),
+                            ActionChip(
+                              avatar: const Icon(Icons.directions_bus, size: 16, color: Colors.orange),
+                              label: const Text('Conductor', style: TextStyle(fontSize: 12)),
+                              onPressed: () => _selectDemoUser('driver@routeguard.pe', 'Conductor'),
+                            ),
+                            ActionChip(
+                              avatar: const Icon(Icons.admin_panel_settings, size: 16, color: Colors.indigo),
+                              label: const Text('Administrador / Dueño', style: TextStyle(fontSize: 12)),
+                              onPressed: () => _selectDemoUser('admin@routeguard.pe', 'Administrador'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
 
                   // Form Container Card
                   Card(
@@ -179,7 +251,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 6),
                           const Text(
-                            'Ingresa con tu cuenta de apoderado',
+                            'Ingresa con tu cuenta de apoderado o institucional',
                             style: TextStyle(fontSize: 13, color: Colors.black54),
                           ),
                           const SizedBox(height: 20),
@@ -201,7 +273,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       _errorMessage!,
                                       style: const TextStyle(
                                         color: AppTheme.errorColor,
-                                        fontSize: 12,
+                                        fontSize: 13,
                                         fontWeight: FontWeight.w500,
                                       ),
                                     ),
@@ -216,13 +288,19 @@ class _LoginScreenState extends State<LoginScreen> {
                           TextFormField(
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
-                            decoration: const InputDecoration(
+                            textInputAction: TextInputAction.next,
+                            decoration: InputDecoration(
                               labelText: 'Correo electrónico',
-                              prefixIcon: Icon(Icons.email_outlined),
+                              hintText: 'ejemplo@routeguard.pe',
+                              prefixIcon: const Icon(Icons.email_outlined),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                             ),
-                            validator: (val) {
-                              if (val == null || val.trim().isEmpty) {
-                                return 'Ingresa tu correo electrónico';
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Por favor ingresa tu correo electrónico';
+                              }
+                              if (!value.contains('@')) {
+                                return 'Ingresa un correo electrónico válido';
                               }
                               return null;
                             },
@@ -233,12 +311,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           TextFormField(
                             controller: _passwordController,
                             obscureText: _obscurePassword,
+                            textInputAction: TextInputAction.done,
+                            onFieldSubmitted: (_) => _handleLogin(),
                             decoration: InputDecoration(
                               labelText: 'Contraseña',
                               prefixIcon: const Icon(Icons.lock_outline),
                               suffixIcon: IconButton(
                                 icon: Icon(
-                                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                  _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                                 ),
                                 onPressed: () {
                                   setState(() {
@@ -246,17 +326,21 @@ class _LoginScreenState extends State<LoginScreen> {
                                   });
                                 },
                               ),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                             ),
-                            validator: (val) {
-                              if (val == null || val.isEmpty) {
-                                return 'Ingresa tu contraseña';
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Por favor ingresa tu contraseña';
+                              }
+                              if (value.length < 6) {
+                                return 'La contraseña debe tener al menos 6 caracteres';
                               }
                               return null;
                             },
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 12),
 
-                          // Forgot Password Link
+                          // Forgot Password
                           Align(
                             alignment: Alignment.centerRight,
                             child: TextButton(
@@ -264,55 +348,68 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: const Text(
                                 '¿Olvidaste tu contraseña?',
                                 style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
                                   color: AppTheme.primaryNavy,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
                                 ),
                               ),
                             ),
                           ),
                           const SizedBox(height: 12),
 
-                          // Submit Button
+                          // Login Button
                           ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primaryNavy,
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size.fromHeight(50),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
                             onPressed: _isLoading ? null : _handleLogin,
                             child: _isLoading
                                 ? const SizedBox(
-                                    width: 22,
-                                    height: 22,
+                                    width: 24,
+                                    height: 24,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2.5,
                                       color: Colors.white,
                                     ),
                                   )
-                                : const Text('Iniciar sesión'),
+                                : const Text(
+                                    'Iniciar sesión',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                           ),
                         ],
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 24),
-                  // Demo Account Hint
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade200),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.info_outline, color: AppTheme.primaryTeal, size: 20),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'Cuenta demo: parent@routeguard.pe / password123',
-                            style: TextStyle(fontSize: 12, color: Colors.black87),
+
+                  // Terms & Privacy
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'Al ingresar aceptas los ',
+                        style: TextStyle(fontSize: 12, color: Colors.black54),
+                      ),
+                      GestureDetector(
+                        onTap: _showTermsDialog,
+                        child: const Text(
+                          'Términos y Condiciones',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.primaryNavy,
+                            fontWeight: FontWeight.bold,
+                            decoration: TextDecoration.underline,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ],
               ),

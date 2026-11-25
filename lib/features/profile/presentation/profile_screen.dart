@@ -38,13 +38,13 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Foto de Perfil',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryNavy),
+                Text(
+                  AppStrings.tr('profile_avatar_title'),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryNavy),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Selecciona una opción para actualizar la imagen de tu cuenta:',
+                  AppStrings.tr('profile_avatar_subtitle'),
                   style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                 ),
                 const SizedBox(height: 16),
@@ -57,8 +57,8 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     child: const Icon(Icons.camera_alt_outlined, color: AppTheme.primaryNavy),
                   ),
-                  title: const Text('Tomar foto con la cámara', style: TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: const Text('Captura una nueva fotografía instantánea'),
+                  title: Text(AppStrings.tr('profile_avatar_camera'), style: const TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: Text(AppStrings.tr('profile_avatar_camera_desc')),
                   onTap: () async {
                     Navigator.pop(ctx);
                     try {
@@ -73,8 +73,8 @@ class ProfileScreen extends StatelessWidget {
                         await sessionManager.setAvatarPath(image.path);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('¡Foto de perfil actualizada desde la cámara!'),
+                            SnackBar(
+                              content: Text(AppStrings.tr('profile_avatar_camera_success')),
                               backgroundColor: Colors.green,
                             ),
                           );
@@ -83,7 +83,9 @@ class ProfileScreen extends StatelessWidget {
                     } catch (e) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('No se pudo acceder a la cámara: $e')),
+                          SnackBar(
+                            content: Text(AppStrings.trf('profile_avatar_camera_error', {'error': '$e'})),
+                          ),
                         );
                       }
                     }
@@ -98,8 +100,8 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     child: const Icon(Icons.photo_library_outlined, color: Colors.teal),
                   ),
-                  title: const Text('Elegir de la galería o archivos', style: TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: const Text('Selecciona una imagen guardada en tu dispositivo'),
+                  title: Text(AppStrings.tr('profile_avatar_gallery'), style: const TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: Text(AppStrings.tr('profile_avatar_gallery_desc')),
                   onTap: () async {
                     Navigator.pop(ctx);
                     try {
@@ -114,8 +116,8 @@ class ProfileScreen extends StatelessWidget {
                         await sessionManager.setAvatarPath(image.path);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('¡Foto de perfil seleccionada de archivos exitosamente!'),
+                            SnackBar(
+                              content: Text(AppStrings.tr('profile_avatar_gallery_success')),
                               backgroundColor: Colors.green,
                             ),
                           );
@@ -124,7 +126,9 @@ class ProfileScreen extends StatelessWidget {
                     } catch (e) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('No se pudo acceder a los archivos: $e')),
+                          SnackBar(
+                            content: Text(AppStrings.trf('profile_avatar_gallery_error', {'error': '$e'})),
+                          ),
                         );
                       }
                     }
@@ -140,14 +144,16 @@ class ProfileScreen extends StatelessWidget {
                       ),
                       child: const Icon(Icons.delete_outline, color: Colors.red),
                     ),
-                    title: const Text('Eliminar foto / Restablecer iniciales',
-                        style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
+                    title: Text(
+                      AppStrings.tr('profile_avatar_remove'),
+                      style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+                    ),
                     onTap: () async {
                       Navigator.pop(ctx);
                       await sessionManager.setAvatarPath(null);
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Foto de perfil eliminada.')),
+                          SnackBar(content: Text(AppStrings.tr('profile_avatar_removed'))),
                         );
                       }
                     },
@@ -219,15 +225,15 @@ class ProfileScreen extends StatelessWidget {
                 : AppTheme.primaryNavy;
 
         final hasCustomName = sessionManager.fullName.isNotEmpty &&
-            sessionManager.fullName != 'Usuario RouteGuard';
+            sessionManager.fullName != AppStrings.tr('profile_default_user');
 
         final displayName = hasCustomName
             ? sessionManager.fullName
             : (isAdmin
-                ? 'Carlos Mendoza (Admin)'
+                ? AppStrings.tr('profile_demo_admin_name')
                 : isDriver
-                    ? 'Carlos Ramírez (Chofer)'
-                    : 'Laura Gómez (Apoderada)');
+                    ? AppStrings.tr('profile_demo_driver_name')
+                    : AppStrings.tr('profile_demo_parent_name'));
 
         final initials = displayName
             .split(' ')
@@ -348,9 +354,9 @@ class ProfileScreen extends StatelessWidget {
                                     ? Icons.directions_bus
                                     : Icons.child_care,
                             isAdmin
-                                ? 'Organización gestora'
+                                ? AppStrings.tr('profile_org_manager_label')
                                 : isDriver
-                                    ? 'Unidad móvil asignada'
+                                    ? AppStrings.tr('profile_assigned_unit_label')
                                     : AppStrings.tr('profile_student'),
                             isAdmin
                                 ? 'Movilidades Escolares San Juan SAC'
@@ -377,13 +383,13 @@ class ProfileScreen extends StatelessWidget {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Row(
+                                Row(
                                   children: [
-                                    Icon(Icons.shield_outlined, color: AppTheme.primaryNavy, size: 20),
-                                    SizedBox(width: 8),
+                                    const Icon(Icons.shield_outlined, color: AppTheme.primaryNavy, size: 20),
+                                    const SizedBox(width: 8),
                                     Text(
-                                      'Cuidadores Autorizados',
-                                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                      AppStrings.tr('profile_caregivers_title'),
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                                     ),
                                   ],
                                 ),
@@ -394,21 +400,29 @@ class ProfileScreen extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
-                                    'Red Familiar',
+                                    AppStrings.tr('profile_caregivers_badge'),
                                     style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
                                   ),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 8),
-                            const Text(
-                              'Cuidadores autorizados para entrega, recepción y monitoreo en vivo con alertas:',
-                              style: TextStyle(fontSize: 12, color: Colors.black54),
+                            Text(
+                              AppStrings.tr('profile_caregivers_desc'),
+                              style: const TextStyle(fontSize: 12, color: Colors.black54),
                             ),
                             const SizedBox(height: 10),
-                            _buildCaregiverTile('Carmen López de Aljovín', 'Abuela / Cuidadora principal', '987-123-456'),
+                            _buildCaregiverTile(
+                              'Carmen López de Aljovín',
+                              AppStrings.tr('profile_caregiver_default_1_rel'),
+                              '987-123-456',
+                            ),
                             const Divider(height: 12),
-                            _buildCaregiverTile('Laura Gómez', 'Madre / Apoderada titular', '999-888-777'),
+                            _buildCaregiverTile(
+                              'Laura Gómez',
+                              AppStrings.tr('profile_caregiver_default_2_rel'),
+                              '999-888-777',
+                            ),
                             const SizedBox(height: 10),
                             OutlinedButton.icon(
                               style: OutlinedButton.styleFrom(
@@ -418,7 +432,10 @@ class ProfileScreen extends StatelessWidget {
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                               ),
                               icon: const Icon(Icons.person_add, size: 16),
-                              label: const Text('Agregar cuidador autorizado', style: TextStyle(fontSize: 12)),
+                              label: Text(
+                                AppStrings.tr('profile_caregivers_add_btn'),
+                                style: const TextStyle(fontSize: 12),
+                              ),
                               onPressed: () => _showAddCaregiverDialog(context),
                             ),
                           ],
@@ -473,21 +490,21 @@ class ProfileScreen extends StatelessWidget {
                           SizedBox(
                             width: double.infinity,
                             child: SegmentedButton<String>(
-                              segments: const [
+                              segments: [
                                 ButtonSegment<String>(
                                   value: 'PARENT',
-                                  icon: Icon(Icons.family_restroom, size: 16),
-                                  label: Text('Apoderado', style: TextStyle(fontSize: 11)),
+                                  icon: const Icon(Icons.family_restroom, size: 16),
+                                  label: Text(AppStrings.tr('role_seg_parent'), style: const TextStyle(fontSize: 11)),
                                 ),
                                 ButtonSegment<String>(
                                   value: 'DRIVER',
-                                  icon: Icon(Icons.directions_bus, size: 16),
-                                  label: Text('Conductor', style: TextStyle(fontSize: 11)),
+                                  icon: const Icon(Icons.directions_bus, size: 16),
+                                  label: Text(AppStrings.tr('role_seg_driver'), style: const TextStyle(fontSize: 11)),
                                 ),
                                 ButtonSegment<String>(
                                   value: 'ADMINISTRATOR',
-                                  icon: Icon(Icons.admin_panel_settings, size: 16),
-                                  label: Text('Admin / Dueño', style: TextStyle(fontSize: 11)),
+                                  icon: const Icon(Icons.admin_panel_settings, size: 16),
+                                  label: Text(AppStrings.tr('role_seg_admin'), style: const TextStyle(fontSize: 11)),
                                 ),
                               ],
                               selected: {normalizedRole},
@@ -579,8 +596,8 @@ class ProfileScreen extends StatelessWidget {
                               ),
                             ],
                             selected: {currentLang},
-                            onSelectionChanged: (newSelection) {
-                              AppStrings.setLanguage(newSelection.first);
+                            onSelectionChanged: (newSelection) async {
+                              await sessionManager.setLanguage(newSelection.first);
                             },
                           ),
                         ],
@@ -631,9 +648,9 @@ class ProfileScreen extends StatelessWidget {
                         AppStrings.tr('profile_app_version'),
                         style: const TextStyle(fontSize: 14),
                       ),
-                      trailing: const Text(
-                        'RouteGuard Multiplataforma v1.0.0',
-                        style: TextStyle(
+                      trailing: Text(
+                        AppStrings.tr('profile_app_version_val'),
+                        style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.primaryNavy,
@@ -715,11 +732,16 @@ class ProfileScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.person_add, color: AppTheme.primaryNavy),
-            SizedBox(width: 8),
-            Text('Nuevo Cuidador', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+            const Icon(Icons.person_add, color: AppTheme.primaryNavy),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                AppStrings.tr('profile_caregiver_dialog_title'),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+              ),
+            ),
           ],
         ),
         content: Column(
@@ -727,25 +749,25 @@ class ProfileScreen extends StatelessWidget {
           children: [
             TextField(
               controller: nameCtrl,
-              decoration: const InputDecoration(labelText: 'Nombre del familiar / cuidador'),
+              decoration: InputDecoration(labelText: AppStrings.tr('profile_caregiver_name_label')),
             ),
             const SizedBox(height: 10),
             TextField(
               controller: relationCtrl,
-              decoration: const InputDecoration(labelText: 'Parentesco (ej. Abuela, Tío, Papá)'),
+              decoration: InputDecoration(labelText: AppStrings.tr('profile_caregiver_relation_label')),
             ),
             const SizedBox(height: 10),
             TextField(
               controller: phoneCtrl,
               keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(labelText: 'Número celular para alertas SMS/Push'),
+              decoration: InputDecoration(labelText: AppStrings.tr('profile_caregiver_phone_label')),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
+            child: Text(AppStrings.tr('common_cancel')),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryNavy, foregroundColor: Colors.white),
@@ -753,12 +775,14 @@ class ProfileScreen extends StatelessWidget {
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('¡Cuidador ${nameCtrl.text} agregado a la red familiar con acceso a alertas!'),
+                  content: Text(
+                    AppStrings.trf('profile_caregiver_added_msg', {'name': nameCtrl.text}),
+                  ),
                   backgroundColor: Colors.green,
                 ),
               );
             },
-            child: const Text('Guardar'),
+            child: Text(AppStrings.tr('common_save')),
           ),
         ],
       ),

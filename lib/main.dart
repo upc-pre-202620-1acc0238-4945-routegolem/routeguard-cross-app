@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'core/localization/app_strings.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/session_manager.dart';
 import 'features/auth/presentation/login_screen.dart';
@@ -43,19 +44,24 @@ class _RouteGuardCrossAppState extends State<RouteGuardCrossApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'RouteGuard',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      home: _isAuthenticated
-          ? MainShell(
-              sessionManager: widget.sessionManager,
-              onSignedOut: _onSignedOut,
-            )
-          : LoginScreen(
-              sessionManager: widget.sessionManager,
-              onAuthenticated: _onAuthenticated,
-            ),
+    return ValueListenableBuilder<AppLanguage>(
+      valueListenable: AppStrings.currentLanguage,
+      builder: (context, _, _) {
+        return MaterialApp(
+          title: AppStrings.tr('app_title'),
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          home: _isAuthenticated
+              ? MainShell(
+                  sessionManager: widget.sessionManager,
+                  onSignedOut: _onSignedOut,
+                )
+              : LoginScreen(
+                  sessionManager: widget.sessionManager,
+                  onAuthenticated: _onAuthenticated,
+                ),
+        );
+      },
     );
   }
 }

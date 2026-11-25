@@ -246,6 +246,7 @@ class _MainShellState extends State<MainShell> {
                 child: SafeArea(
                   top: false,
                   child: Center(
+                    heightFactor: 1.0,
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
                         maxWidth: destinations.length <= 3 ? 380 : 560,

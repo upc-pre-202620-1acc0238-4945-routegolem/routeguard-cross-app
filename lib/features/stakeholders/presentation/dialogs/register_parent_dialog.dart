@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/localization/app_strings.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../data/stakeholder_repository.dart';
 
@@ -67,40 +68,54 @@ class _RegisterParentDialogState extends State<RegisterParentDialog> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
-                  children: const [
-                    Icon(Icons.family_restroom, color: AppTheme.primaryNavy),
-                    SizedBox(width: 8),
-                    Text(
-                      'Registrar Padre / Apoderado',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  children: [
+                    const Icon(Icons.family_restroom, color: AppTheme.primaryNavy),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        AppStrings.tr('parent_reg_title'),
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _firstNameController,
-                  decoration: const InputDecoration(labelText: 'Nombres', border: OutlineInputBorder()),
-                  validator: (v) => (v == null || v.isEmpty) ? 'Campo requerido' : null,
+                  decoration: InputDecoration(
+                    labelText: AppStrings.tr('driver_reg_firstname'),
+                    border: const OutlineInputBorder(),
+                  ),
+                  validator: (v) => (v == null || v.isEmpty) ? AppStrings.tr('common_required_field') : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _lastNameController,
-                  decoration: const InputDecoration(labelText: 'Apellidos', border: OutlineInputBorder()),
-                  validator: (v) => (v == null || v.isEmpty) ? 'Campo requerido' : null,
+                  decoration: InputDecoration(
+                    labelText: AppStrings.tr('driver_reg_lastname'),
+                    border: const OutlineInputBorder(),
+                  ),
+                  validator: (v) => (v == null || v.isEmpty) ? AppStrings.tr('common_required_field') : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _phoneController,
-                  decoration: const InputDecoration(labelText: 'Teléfono celular', border: OutlineInputBorder()),
+                  decoration: InputDecoration(
+                    labelText: AppStrings.tr('parent_reg_phone'),
+                    border: const OutlineInputBorder(),
+                  ),
                   keyboardType: TextInputType.phone,
-                  validator: (v) => (v == null || v.isEmpty) ? 'Campo requerido' : null,
+                  validator: (v) => (v == null || v.isEmpty) ? AppStrings.tr('common_required_field') : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _emailController,
-                  decoration: const InputDecoration(labelText: 'Correo electrónico', border: OutlineInputBorder()),
+                  decoration: InputDecoration(
+                    labelText: AppStrings.tr('driver_reg_email'),
+                    border: const OutlineInputBorder(),
+                  ),
                   keyboardType: TextInputType.emailAddress,
-                  validator: (v) => (v == null || !v.contains('@')) ? 'Correo inválido' : null,
+                  validator: (v) => (v == null || !v.contains('@')) ? AppStrings.tr('common_invalid_email') : null,
                 ),
                 const SizedBox(height: 20),
                 Row(
@@ -108,7 +123,7 @@ class _RegisterParentDialogState extends State<RegisterParentDialog> {
                   children: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancelar'),
+                      child: Text(AppStrings.tr('common_cancel')),
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
@@ -123,7 +138,7 @@ class _RegisterParentDialogState extends State<RegisterParentDialog> {
                               height: 20,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
-                          : const Text('Registrar'),
+                          : Text(AppStrings.tr('common_register')),
                     ),
                   ],
                 ),

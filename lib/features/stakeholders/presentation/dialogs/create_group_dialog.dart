@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/localization/app_strings.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../data/stakeholder_repository.dart';
 import '../../models/parent_model.dart';
@@ -34,7 +35,6 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
   @override
   void initState() {
     super.initState();
-    // Pre-select children if available
     for (final child in _allChildren.take(2)) {
       _selectedStudentIds.add(child.id);
     }
@@ -84,26 +84,31 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
-                  children: const [
-                    Icon(Icons.groups, color: AppTheme.primaryNavy),
-                    SizedBox(width: 8),
-                    Text(
-                      'Crear Grupo Escolar',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  children: [
+                    const Icon(Icons.groups, color: AppTheme.primaryNavy),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        AppStrings.tr('group_create_title'),
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _nameController,
-                  decoration: const InputDecoration(labelText: 'Nombre del grupo (ej. Turno Mañana)', border: OutlineInputBorder()),
-                  validator: (v) => (v == null || v.isEmpty) ? 'Campo requerido' : null,
+                  decoration: InputDecoration(
+                    labelText: AppStrings.tr('group_name_label'),
+                    border: const OutlineInputBorder(),
+                  ),
+                  validator: (v) => (v == null || v.isEmpty) ? AppStrings.tr('common_required_field') : null,
                 ),
                 if (availableChildren.isNotEmpty) ...[
                   const SizedBox(height: 14),
-                  const Text(
-                    'Seleccionar estudiantes:',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  Text(
+                    AppStrings.tr('group_select_students'),
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                   ),
                   const SizedBox(height: 6),
                   Container(
@@ -121,7 +126,10 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
                         return CheckboxListTile(
                           dense: true,
                           title: Text(child.fullName, style: const TextStyle(fontSize: 13)),
-                          subtitle: Text('${child.grade} • ${child.age} años', style: const TextStyle(fontSize: 11)),
+                          subtitle: Text(
+                            '${child.grade} • ${child.age} ${AppStrings.tr('common_years')}',
+                            style: const TextStyle(fontSize: 11),
+                          ),
                           value: isSelected,
                           onChanged: (val) {
                             setState(() {
@@ -140,8 +148,8 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
                 const SizedBox(height: 12),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Marcar como finalizado'),
-                  subtitle: const Text('Los grupos finalizados pueden asignarse a rutas activas'),
+                  title: Text(AppStrings.tr('group_mark_finalized')),
+                  subtitle: Text(AppStrings.tr('group_finalized_hint')),
                   value: _isFinalized,
                   onChanged: (val) => setState(() => _isFinalized = val),
                 ),
@@ -151,7 +159,7 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
                   children: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancelar'),
+                      child: Text(AppStrings.tr('common_cancel')),
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
@@ -166,7 +174,7 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
                               height: 20,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
-                          : const Text('Crear'),
+                          : Text(AppStrings.tr('common_create')),
                     ),
                   ],
                 ),

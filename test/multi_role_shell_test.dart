@@ -126,6 +126,12 @@ void main() {
 
       // Verify notifications screen is in the tree
       expect(find.text('Notificaciones y Avisos'), findsOneWidget);
+
+      // Verify bottomNavigationBar does not collapse body height
+      final bodyRect = tester.getRect(find.byType(IndexedStack));
+      final navRect = tester.getRect(find.byType(NavigationBar));
+      expect(bodyRect.height, greaterThan(400));
+      expect(navRect.height, lessThanOrEqualTo(120));
     });
   });
 }

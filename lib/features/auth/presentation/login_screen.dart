@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/session_manager.dart';
 import '../data/auth_repository.dart';
@@ -89,21 +90,29 @@ class _LoginScreenState extends State<LoginScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.lock_reset, color: AppTheme.primaryNavy),
-            SizedBox(width: 10),
-            Text('Recuperar contraseña', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const Icon(Icons.lock_reset, color: AppTheme.primaryNavy),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                AppStrings.tr('login_forgot_password_title'),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ),
           ],
         ),
-        content: const Text(
-          'Por políticas de seguridad y privacidad escolar, para restablecer tus credenciales por favor contacta al administrador de tu institución educativa o escribe a soporte@routeguard.pe.',
-          style: TextStyle(fontSize: 14, height: 1.4),
+        content: Text(
+          AppStrings.tr('login_forgot_password_msg'),
+          style: const TextStyle(fontSize: 14, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Entendido', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(
+              AppStrings.tr('common_understood'),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -115,17 +124,23 @@ class _LoginScreenState extends State<LoginScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Términos y Condiciones de RouteGuard', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
-        content: const SingleChildScrollView(
+        title: Text(
+          AppStrings.tr('login_terms_title'),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+        ),
+        content: SingleChildScrollView(
           child: Text(
-            'RouteGuard garantiza la confidencialidad y protección de los datos de menores, padres de familia y conductores conforme a las leyes de protección de datos personales. Al utilizar este servicio, aceptas el monitoreo GPS pasivo de las unidades vehiculares exclusivamente durante el horario escolar para garantizar la seguridad del traslado.',
-            style: TextStyle(fontSize: 13, height: 1.4),
+            AppStrings.tr('login_terms_content'),
+            style: const TextStyle(fontSize: 13, height: 1.4),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Entendido', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(
+              AppStrings.tr('common_understood'),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -184,9 +199,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: const Icon(Icons.person_add_alt_1, color: AppTheme.primaryNavy),
                       ),
                       const SizedBox(width: 10),
-                      const Text(
-                        'Crear cuenta en RouteGuard',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryNavy),
+                      Expanded(
+                        child: Text(
+                          AppStrings.tr('register_modal_title'),
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryNavy),
+                        ),
                       ),
                     ],
                   ),
@@ -205,7 +222,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextFormField(
                     controller: nameCtrl,
                     decoration: InputDecoration(
-                      labelText: 'Nombre completo',
+                      labelText: AppStrings.tr('register_full_name_label'),
                       prefixIcon: const Icon(Icons.person_outline),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
@@ -215,7 +232,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     controller: emailCtrl,
                     keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
-                      labelText: 'Correo electrónico',
+                      labelText: AppStrings.tr('login_email_label'),
                       prefixIcon: const Icon(Icons.email_outlined),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
@@ -225,7 +242,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     controller: passCtrl,
                     obscureText: true,
                     decoration: InputDecoration(
-                      labelText: 'Contraseña (mínimo 6 caracteres)',
+                      labelText: AppStrings.tr('register_password_min_label'),
                       prefixIcon: const Icon(Icons.lock_outline),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
@@ -234,14 +251,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   DropdownButtonFormField<String>(
                     initialValue: selectedRole,
                     decoration: InputDecoration(
-                      labelText: 'Rol institucional',
+                      labelText: AppStrings.tr('register_role_label'),
                       prefixIcon: const Icon(Icons.badge_outlined),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    items: const [
-                      DropdownMenuItem(value: 'PARENT', child: Text('Apoderado / Padre de Familia')),
-                      DropdownMenuItem(value: 'DRIVER', child: Text('Conductor / Transportista Escolar')),
-                      DropdownMenuItem(value: 'ADMINISTRATOR', child: Text('Administrador / Dueño de Movilidad')),
+                    items: [
+                      DropdownMenuItem(value: 'PARENT', child: Text(AppStrings.tr('register_role_parent'))),
+                      DropdownMenuItem(value: 'DRIVER', child: Text(AppStrings.tr('register_role_driver'))),
+                      DropdownMenuItem(value: 'ADMINISTRATOR', child: Text(AppStrings.tr('register_role_admin'))),
                     ],
                     onChanged: (val) {
                       if (val != null) setModalState(() => selectedRole = val);
@@ -256,12 +273,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     title: Wrap(
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        const Text('Acepto los ', style: TextStyle(fontSize: 12)),
+                        Text(AppStrings.tr('register_accept_prefix'), style: const TextStyle(fontSize: 12)),
                         GestureDetector(
                           onTap: _showTermsDialog,
-                          child: const Text(
-                            'Términos y Condiciones',
-                            style: TextStyle(
+                          child: Text(
+                            AppStrings.tr('login_terms_link'),
+                            style: const TextStyle(
                               fontSize: 12,
                               color: AppTheme.primaryNavy,
                               fontWeight: FontWeight.bold,
@@ -288,7 +305,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             final pass = passCtrl.text;
                             if (name.isEmpty || email.isEmpty || !email.contains('@') || pass.length < 6) {
                               setModalState(() {
-                                registerError = 'Por favor completa todos los campos válidos.';
+                                registerError = AppStrings.tr('register_validation_error');
                               });
                               return;
                             }
@@ -306,22 +323,22 @@ class _LoginScreenState extends State<LoginScreen> {
                             if (mounted) {
                               messenger.showSnackBar(
                                 SnackBar(
-                                  content: Text('¡Cuenta creada exitosamente! Bienvenido, $name.'),
+                                  content: Text(AppStrings.trf('register_success_msg', {'name': name})),
                                   backgroundColor: Colors.green,
                                 ),
                               );
                               onAuth();
                             }
                           },
-                    child: const Text('Registrar y Comenzar', style: TextStyle(fontWeight: FontWeight.bold)),
+                    child: Text(AppStrings.tr('register_btn_submit'), style: const TextStyle(fontWeight: FontWeight.bold)),
                   ),
                   const SizedBox(height: 8),
                   Center(
                     child: TextButton(
                       onPressed: () => Navigator.pop(ctx),
-                      child: const Text(
-                        '¿Ya tienes cuenta? Inicia sesión',
-                        style: TextStyle(
+                      child: Text(
+                        AppStrings.tr('register_already_account'),
+                        style: const TextStyle(
                           fontSize: 13,
                           color: AppTheme.primaryNavy,
                           fontWeight: FontWeight.w600,
@@ -377,10 +394,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 20),
 
                   // Brand Title & Subtitle
-                  const Text(
-                    'RouteGuard',
+                  Text(
+                    AppStrings.tr('app_title'),
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
                       color: AppTheme.primaryNavy,
@@ -388,10 +405,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Portal Multiplataforma para Apoderados',
+                  Text(
+                    AppStrings.tr('login_portal_subtitle'),
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 14,
                       color: Colors.black54,
                     ),
@@ -409,9 +426,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Acceso Rápido Demo (3 Roles):',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryNavy),
+                        Text(
+                          AppStrings.tr('login_demo_access_title'),
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryNavy),
                         ),
                         const SizedBox(height: 8),
                         Wrap(
@@ -420,17 +437,17 @@ class _LoginScreenState extends State<LoginScreen> {
                           children: [
                             ActionChip(
                               avatar: const Icon(Icons.family_restroom, size: 16, color: AppTheme.primaryNavy),
-                              label: const Text('Apoderado', style: TextStyle(fontSize: 12)),
+                              label: Text(AppStrings.tr('login_role_chip_parent'), style: const TextStyle(fontSize: 12)),
                               onPressed: () => _selectDemoUser('parent@routeguard.pe', 'Apoderado'),
                             ),
                             ActionChip(
                               avatar: const Icon(Icons.directions_bus, size: 16, color: Colors.orange),
-                              label: const Text('Conductor', style: TextStyle(fontSize: 12)),
+                              label: Text(AppStrings.tr('login_role_chip_driver'), style: const TextStyle(fontSize: 12)),
                               onPressed: () => _selectDemoUser('driver@routeguard.pe', 'Conductor'),
                             ),
                             ActionChip(
                               avatar: const Icon(Icons.admin_panel_settings, size: 16, color: Colors.indigo),
-                              label: const Text('Administrador / Dueño', style: TextStyle(fontSize: 12)),
+                              label: Text(AppStrings.tr('login_role_chip_admin'), style: const TextStyle(fontSize: 12)),
                               onPressed: () => _selectDemoUser('admin@routeguard.pe', 'Administrador'),
                             ),
                           ],
@@ -447,18 +464,18 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Iniciar Sesión',
-                            style: TextStyle(
+                          Text(
+                            AppStrings.tr('login_heading'),
+                            style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
                               color: AppTheme.primaryNavy,
                             ),
                           ),
                           const SizedBox(height: 6),
-                          const Text(
-                            'Ingresa con tu cuenta de apoderado o institucional',
-                            style: TextStyle(fontSize: 13, color: Colors.black54),
+                          Text(
+                            AppStrings.tr('login_subheading'),
+                            style: const TextStyle(fontSize: 13, color: Colors.black54),
                           ),
                           const SizedBox(height: 20),
 
@@ -496,17 +513,17 @@ class _LoginScreenState extends State<LoginScreen> {
                             keyboardType: TextInputType.emailAddress,
                             textInputAction: TextInputAction.next,
                             decoration: InputDecoration(
-                              labelText: 'Correo electrónico',
-                              hintText: 'ejemplo@routeguard.pe',
+                              labelText: AppStrings.tr('login_email_label'),
+                              hintText: AppStrings.tr('login_email_hint'),
                               prefixIcon: const Icon(Icons.email_outlined),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                             ),
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
-                                return 'Por favor ingresa tu correo electrónico';
+                                return AppStrings.tr('login_email_required');
                               }
                               if (!value.contains('@')) {
-                                return 'Ingresa un correo electrónico válido';
+                                return AppStrings.tr('login_email_invalid');
                               }
                               return null;
                             },
@@ -520,7 +537,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             textInputAction: TextInputAction.done,
                             onFieldSubmitted: (_) => _handleLogin(),
                             decoration: InputDecoration(
-                              labelText: 'Contraseña',
+                              labelText: AppStrings.tr('login_password_label'),
                               prefixIcon: const Icon(Icons.lock_outline),
                               suffixIcon: IconButton(
                                 icon: Icon(
@@ -536,10 +553,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
-                                return 'Por favor ingresa tu contraseña';
+                                return AppStrings.tr('login_password_required');
                               }
                               if (value.length < 6) {
-                                return 'La contraseña debe tener al menos 6 caracteres';
+                                return AppStrings.tr('login_password_min_length');
                               }
                               return null;
                             },
@@ -551,9 +568,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             alignment: Alignment.centerRight,
                             child: TextButton(
                               onPressed: _showForgotPasswordDialog,
-                              child: const Text(
-                                '¿Olvidaste tu contraseña?',
-                                style: TextStyle(
+                              child: Text(
+                                AppStrings.tr('login_forgot_password'),
+                                style: const TextStyle(
                                   color: AppTheme.primaryNavy,
                                   fontWeight: FontWeight.w600,
                                   fontSize: 13,
@@ -581,9 +598,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                       color: Colors.white,
                                     ),
                                   )
-                                : const Text(
-                                    'Iniciar sesión',
-                                    style: TextStyle(
+                                : Text(
+                                    AppStrings.tr('login_btn_signin'),
+                                    style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -595,9 +612,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Text(
-                                '¿No tienes cuenta? ',
-                                style: TextStyle(fontSize: 13, color: Colors.black87),
+                              Text(
+                                AppStrings.tr('login_no_account_prefix'),
+                                style: const TextStyle(fontSize: 13, color: Colors.black87),
                               ),
                               TextButton(
                                 onPressed: _showRegisterAccountDialog,
@@ -606,9 +623,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                   minimumSize: Size.zero,
                                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                 ),
-                                child: const Text(
-                                  'Crear cuenta',
-                                  style: TextStyle(
+                                child: Text(
+                                  AppStrings.tr('login_btn_create_account'),
+                                  style: const TextStyle(
                                     color: AppTheme.primaryNavy,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 13,
@@ -627,15 +644,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text(
-                        'Al ingresar aceptas los ',
-                        style: TextStyle(fontSize: 12, color: Colors.black54),
+                      Text(
+                        AppStrings.tr('login_terms_prefix'),
+                        style: const TextStyle(fontSize: 12, color: Colors.black54),
                       ),
                       GestureDetector(
                         onTap: _showTermsDialog,
-                        child: const Text(
-                          'Términos y Condiciones',
-                          style: TextStyle(
+                        child: Text(
+                          AppStrings.tr('login_terms_link'),
+                          style: const TextStyle(
                             fontSize: 12,
                             color: AppTheme.primaryNavy,
                             fontWeight: FontWeight.bold,

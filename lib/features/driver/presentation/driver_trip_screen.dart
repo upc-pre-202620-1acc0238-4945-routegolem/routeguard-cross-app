@@ -19,8 +19,6 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
 
   int get _boardedCount =>
       _passengers.where((p) => p.status == PassengerBoardingStatus.boarded).length;
-  int get _absentCount =>
-      _passengers.where((p) => p.status == PassengerBoardingStatus.absent).length;
   int get _totalCount => _passengers.length;
 
   Future<void> _openNavigationWithGoogleMaps() async {
@@ -43,10 +41,10 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
     });
 
     final snackMessage = newStatus == PassengerBoardingStatus.boarded
-        ? '¡${passenger.name} abordó la movilidad escolar!'
+        ? AppStrings.trf('driver_snack_boarded', {'name': passenger.name})
         : newStatus == PassengerBoardingStatus.absent
-            ? '${passenger.name} marcado como no asistió.'
-            : 'Estado de ${passenger.name} restablecido a pendiente.';
+            ? AppStrings.trf('driver_snack_absent', {'name': passenger.name})
+            : AppStrings.trf('driver_snack_pending', {'name': passenger.name});
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -59,7 +57,7 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
 
   void _showReportIncidentDialog() {
     final noteController = TextEditingController();
-    String selectedType = 'Tráfico pesado';
+    String selectedTypeKey = 'driver_incident_traffic';
 
     showModalBottomSheet(
       context: context,
@@ -95,31 +93,45 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                   ),
                   const SizedBox(height: 16),
                   Row(
-                    children: const [
-                      Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 26),
-                      SizedBox(width: 8),
-                      Text(
-                        'Reportar Incidencia en Ruta',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    children: [
+                      const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 26),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          AppStrings.tr('driver_incident_title'),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
-                    initialValue: selectedType,
+                    initialValue: selectedTypeKey,
                     decoration: InputDecoration(
-                      labelText: 'Tipo de contingencia',
+                      labelText: AppStrings.tr('driver_incident_type_label'),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    items: const [
-                      DropdownMenuItem(value: 'Tráfico pesado', child: Text('Tráfico pesado en vía')),
-                      DropdownMenuItem(value: 'Desvío por obras', child: Text('Desvío por obras públicas')),
-                      DropdownMenuItem(value: 'Falla mecánica menor', child: Text('Falla mecánica menor')),
-                      DropdownMenuItem(value: 'Demora de abordaje', child: Text('Demora justificada de abordaje')),
+                    items: [
+                      DropdownMenuItem(
+                        value: 'driver_incident_traffic',
+                        child: Text(AppStrings.tr('driver_incident_traffic')),
+                      ),
+                      DropdownMenuItem(
+                        value: 'driver_incident_detour',
+                        child: Text(AppStrings.tr('driver_incident_detour')),
+                      ),
+                      DropdownMenuItem(
+                        value: 'driver_incident_mechanical',
+                        child: Text(AppStrings.tr('driver_incident_mechanical')),
+                      ),
+                      DropdownMenuItem(
+                        value: 'driver_incident_delay',
+                        child: Text(AppStrings.tr('driver_incident_delay')),
+                      ),
                     ],
                     onChanged: (val) {
                       if (val != null) {
-                        setModalState(() => selectedType = val);
+                        setModalState(() => selectedTypeKey = val);
                       }
                     },
                   ),
@@ -128,8 +140,8 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                     controller: noteController,
                     maxLines: 3,
                     decoration: InputDecoration(
-                      labelText: 'Detalles u observaciones para los padres',
-                      hintText: 'Ej. Estimamos un retraso de 8 minutos en Av. Brasil.',
+                      labelText: AppStrings.tr('driver_incident_notes_label'),
+                      hintText: AppStrings.tr('driver_incident_notes_hint'),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
@@ -142,13 +154,20 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     icon: const Icon(Icons.send_rounded),
-                    label: const Text('Notificar a los Padres de Familia', style: TextStyle(fontWeight: FontWeight.bold)),
+                    label: Text(
+                      AppStrings.tr('driver_incident_send_btn'),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     onPressed: () {
                       Navigator.pop(ctx);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           backgroundColor: Colors.orange.shade800,
-                          content: Text('Incidencia notificada: $selectedType'),
+                          content: Text(
+                            AppStrings.trf('driver_incident_sent_snack', {
+                              'type': AppStrings.tr(selectedTypeKey),
+                            }),
+                          ),
                           behavior: SnackBarBehavior.floating,
                         ),
                       );
@@ -189,8 +208,8 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                 _isRouteFinished = true;
               });
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('¡Recorrido finalizado exitosamente! Notificaciones enviadas.'),
+                SnackBar(
+                  content: Text(AppStrings.tr('driver_finish_snack')),
                   backgroundColor: Colors.green,
                 ),
               );
@@ -207,21 +226,26 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.school, color: AppTheme.primaryNavy),
-            SizedBox(width: 8),
-            Text('Descenso General en Colegio', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+            const Icon(Icons.school, color: AppTheme.primaryNavy),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                AppStrings.tr('driver_dropoff_dialog_title'),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+              ),
+            ),
           ],
         ),
-        content: const Text(
-          '¿Deseas confirmar la entrega y descenso seguro de todos los estudiantes a bordo en la puerta del colegio?',
-          style: TextStyle(fontSize: 14),
+        content: Text(
+          AppStrings.tr('driver_dropoff_dialog_msg'),
+          style: const TextStyle(fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
+            child: Text(AppStrings.tr('common_cancel')),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -238,13 +262,16 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                 }
               });
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('¡Descenso general completado! Todos los estudiantes llegaron a salvo al colegio.'),
+                SnackBar(
+                  content: Text(AppStrings.tr('driver_dropoff_snack')),
                   backgroundColor: Colors.green,
                 ),
               );
             },
-            child: const Text('Confirmar Llegada', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(
+              AppStrings.tr('driver_dropoff_confirm'),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -335,7 +362,9 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            _isRouteFinished ? 'FINALIZADO' : 'EN CURSO',
+                            _isRouteFinished
+                                ? AppStrings.tr('driver_badge_finished')
+                                : AppStrings.tr('driver_badge_in_progress'),
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
@@ -357,7 +386,10 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                           ),
                         ),
                         Text(
-                          '$_boardedCount / $_totalCount ${AppStrings.tr('driver_status_boarded').toLowerCase()}s',
+                          AppStrings.trf('driver_boarded_counter', {
+                            'boarded': _boardedCount,
+                            'total': _totalCount,
+                          }),
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
@@ -474,8 +506,8 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                               const Icon(Icons.speed, size: 14, color: AppTheme.primaryNavy),
                               const SizedBox(width: 4),
                               Text(
-                                '38 km/h · En movimiento',
-                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryNavy),
+                                AppStrings.tr('driver_speed_moving'),
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryNavy),
                               ),
                             ],
                           ),
@@ -495,10 +527,13 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(Icons.gps_fixed, size: 14, color: Colors.green),
-                              SizedBox(width: 4),
-                              Text('GPS Activo', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green)),
+                            children: [
+                              const Icon(Icons.gps_fixed, size: 14, color: Colors.green),
+                              const SizedBox(width: 4),
+                              Text(
+                                AppStrings.tr('driver_gps_active'),
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green),
+                              ),
                             ],
                           ),
                         ),
@@ -532,17 +567,17 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                             child: const Icon(Icons.near_me, color: AppTheme.primaryNavy, size: 20),
                           ),
                           const SizedBox(width: 10),
-                          const Expanded(
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Próxima parada: Parada 1: Javier Prado Este',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                  AppStrings.tr('driver_next_stop_title'),
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                                 ),
                                 Text(
-                                  'En curso hacia punto de recojo · 07:15 AM',
-                                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                                  AppStrings.tr('driver_next_stop_subtitle'),
+                                  style: const TextStyle(color: Colors.grey, fontSize: 12),
                                 ),
                               ],
                             ),
@@ -558,7 +593,10 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 10),
                         ),
                         icon: const Icon(Icons.navigation_outlined, size: 16),
-                        label: const Text('Navegar con Google Maps', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        label: Text(
+                          AppStrings.tr('driver_btn_navigate_maps'),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
                         onPressed: _openNavigationWithGoogleMaps,
                       ),
                     ],
@@ -617,9 +655,9 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                   backgroundColor: Colors.teal.shade50.withValues(alpha: 0.5),
                 ),
                 icon: const Icon(Icons.school, size: 18),
-                label: const Text(
-                  'Llegada al Colegio (Descenso general)',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                label: Text(
+                  AppStrings.tr('driver_btn_dropoff_all'),
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                 ),
                 onPressed: _isRouteFinished ? null : _arriveAllAtSchool,
               ),
@@ -627,7 +665,7 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
 
               // Passengers list header
               Text(
-                'Lista de Estudiantes (${_passengers.length})',
+                AppStrings.trf('driver_students_list_header', {'count': _passengers.length}),
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
               const SizedBox(height: 8),
@@ -736,10 +774,10 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                   children: [
                     const Icon(Icons.check_circle, color: Colors.green, size: 20),
                     const SizedBox(width: 8),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'A bordo de la unidad escolar',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.green),
+                        AppStrings.tr('driver_card_onboard'),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.green),
                       ),
                     ),
                     OutlinedButton.icon(
@@ -753,9 +791,9 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
                       icon: const Icon(Icons.undo, size: 14, color: Colors.black87),
-                      label: const Text(
-                        'Deshacer (volver a Pendiente)',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      label: Text(
+                        AppStrings.tr('driver_btn_undo_pending'),
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
@@ -773,10 +811,10 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                   children: [
                     const Icon(Icons.cancel, color: Colors.red, size: 20),
                     const SizedBox(width: 8),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Marcado como no asistió',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.red),
+                        AppStrings.tr('driver_card_absent'),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.red),
                       ),
                     ),
                     OutlinedButton(
@@ -789,7 +827,7 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: const Text('Volver a Pendiente', style: TextStyle(fontSize: 11)),
+                      child: Text(AppStrings.tr('driver_btn_back_pending'), style: const TextStyle(fontSize: 11)),
                     ),
                     const SizedBox(width: 6),
                     ElevatedButton.icon(
@@ -803,9 +841,9 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
                       icon: const Icon(Icons.check, size: 14),
-                      label: const Text(
-                        'Marcar Subió',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      label: Text(
+                        AppStrings.tr('driver_btn_mark_boarded'),
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],

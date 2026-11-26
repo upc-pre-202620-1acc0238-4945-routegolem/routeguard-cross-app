@@ -98,181 +98,198 @@ class _StakeholdersScreenState extends State<StakeholdersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(AppStrings.tr('stakeholders_title')),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Filter Chips
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                ChoiceChip(
-                  label: Text(AppStrings.tr('tab_drivers')),
-                  selected: _selectedTab == StakeholderTab.drivers,
-                  onSelected: (val) {
-                    if (val) setState(() => _selectedTab = StakeholderTab.drivers);
-                  },
-                ),
-                const SizedBox(width: 8),
-                ChoiceChip(
-                  label: Text(AppStrings.tr('tab_parents')),
-                  selected: _selectedTab == StakeholderTab.parents,
-                  onSelected: (val) {
-                    if (val) setState(() => _selectedTab = StakeholderTab.parents);
-                  },
-                ),
-                const SizedBox(width: 8),
-                ChoiceChip(
-                  label: Text(AppStrings.tr('tab_groups')),
-                  selected: _selectedTab == StakeholderTab.groups,
-                  onSelected: (val) {
-                    if (val) setState(() => _selectedTab = StakeholderTab.groups);
-                  },
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: _selectedTab == StakeholderTab.drivers
-                    ? 'Buscar conductor por nombre o licencia...'
-                    : _selectedTab == StakeholderTab.parents
-                        ? 'Buscar padre o estudiante...'
-                        : 'Buscar grupo escolar...',
-                prefixIcon: const Icon(Icons.search, size: 20),
-                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+    return ValueListenableBuilder<AppLanguage>(
+      valueListenable: AppStrings.currentLanguage,
+      builder: (context, _, _) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(AppStrings.tr('stakeholders_title')),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                onPressed: _loadData,
               ),
-              onChanged: (val) => setState(() => _searchQuery = val.trim().toLowerCase()),
-            ),
+            ],
           ),
-          const Divider(height: 1),
-
-          // Content List
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : RefreshIndicator(
-                    onRefresh: _loadData,
-                    child: Builder(
-                      builder: (context) {
-                        final filteredDrivers = _drivers.where((d) =>
-                            _searchQuery.isEmpty ||
-                            d.fullName.toLowerCase().contains(_searchQuery) ||
-                            d.licenseNumber.toLowerCase().contains(_searchQuery) ||
-                            d.email.toLowerCase().contains(_searchQuery)).toList();
-
-                        final filteredParents = _parents.where((p) =>
-                            _searchQuery.isEmpty ||
-                            p.fullName.toLowerCase().contains(_searchQuery) ||
-                            p.email.toLowerCase().contains(_searchQuery) ||
-                            p.children.any((c) => c.fullName.toLowerCase().contains(_searchQuery))).toList();
-
-                        final filteredGroups = _groups.where((g) =>
-                            _searchQuery.isEmpty ||
-                            g.name.toLowerCase().contains(_searchQuery)).toList();
-
-                        return ListView(
-                          padding: const EdgeInsets.all(16),
-                          children: [
-                            if (_selectedTab == StakeholderTab.drivers) ...[
-                              OutlinedButton.icon(
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppTheme.primaryNavy,
-                                  side: const BorderSide(color: AppTheme.primaryNavy),
-                                  minimumSize: const Size.fromHeight(46),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                ),
-                                icon: const Icon(Icons.person_add),
-                                label: Text(AppStrings.tr('btn_register_driver')),
-                                onPressed: _openRegisterDriver,
-                              ),
-                              const SizedBox(height: 12),
-                              if (filteredDrivers.isEmpty)
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 20),
-                                  child: Center(child: Text('No se encontraron conductores.', style: TextStyle(color: Colors.grey))),
-                                )
-                              else
-                                ...filteredDrivers.map((drv) => _buildDriverCard(drv)),
-                            ] else if (_selectedTab == StakeholderTab.parents) ...[
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: OutlinedButton.icon(
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: AppTheme.primaryNavy,
-                                        side: const BorderSide(color: AppTheme.primaryNavy),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                      ),
-                                      icon: const Icon(Icons.person_add, size: 18),
-                                      label: Text(AppStrings.tr('btn_register_parent'), style: const TextStyle(fontSize: 12)),
-                                      onPressed: _openRegisterParent,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: ElevatedButton.icon(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppTheme.primaryNavy,
-                                        foregroundColor: Colors.white,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                      ),
-                                      icon: const Icon(Icons.child_care, size: 18),
-                                      label: Text(AppStrings.tr('btn_register_child'), style: const TextStyle(fontSize: 12)),
-                                      onPressed: _openRegisterChild,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              if (filteredParents.isEmpty)
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 20),
-                                  child: Center(child: Text('No se encontraron padres.', style: TextStyle(color: Colors.grey))),
-                                )
-                              else
-                                ...filteredParents.map((par) => _buildParentCard(par)),
-                            ] else ...[
-                              OutlinedButton.icon(
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppTheme.primaryNavy,
-                                  side: const BorderSide(color: AppTheme.primaryNavy),
-                                  minimumSize: const Size.fromHeight(46),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                ),
-                                icon: const Icon(Icons.group_add),
-                                label: Text(AppStrings.tr('btn_create_group')),
-                                onPressed: _openCreateGroup,
-                              ),
-                              const SizedBox(height: 12),
-                              if (filteredGroups.isEmpty)
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 20),
-                                  child: Center(child: Text('No se encontraron grupos.', style: TextStyle(color: Colors.grey))),
-                                )
-                              else
-                                ...filteredGroups.map((grp) => _buildGroupCard(grp)),
-                            ],
-                          ],
-                        );
+          body: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    ChoiceChip(
+                      label: Text(AppStrings.tr('tab_drivers')),
+                      selected: _selectedTab == StakeholderTab.drivers,
+                      onSelected: (val) {
+                        if (val) setState(() => _selectedTab = StakeholderTab.drivers);
                       },
                     ),
+                    const SizedBox(width: 8),
+                    ChoiceChip(
+                      label: Text(AppStrings.tr('tab_parents')),
+                      selected: _selectedTab == StakeholderTab.parents,
+                      onSelected: (val) {
+                        if (val) setState(() => _selectedTab = StakeholderTab.parents);
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    ChoiceChip(
+                      label: Text(AppStrings.tr('tab_groups')),
+                      selected: _selectedTab == StakeholderTab.groups,
+                      onSelected: (val) {
+                        if (val) setState(() => _selectedTab = StakeholderTab.groups);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: _selectedTab == StakeholderTab.drivers
+                        ? AppStrings.tr('stakeholders_search_drivers')
+                        : _selectedTab == StakeholderTab.parents
+                            ? AppStrings.tr('stakeholders_search_parents')
+                            : AppStrings.tr('stakeholders_search_groups'),
+                    prefixIcon: const Icon(Icons.search, size: 20),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
+                  onChanged: (val) => setState(() => _searchQuery = val.trim().toLowerCase()),
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : RefreshIndicator(
+                        onRefresh: _loadData,
+                        child: Builder(
+                          builder: (context) {
+                            final filteredDrivers = _drivers.where((d) =>
+                                _searchQuery.isEmpty ||
+                                d.fullName.toLowerCase().contains(_searchQuery) ||
+                                d.licenseNumber.toLowerCase().contains(_searchQuery) ||
+                                d.email.toLowerCase().contains(_searchQuery)).toList();
+
+                            final filteredParents = _parents.where((p) =>
+                                _searchQuery.isEmpty ||
+                                p.fullName.toLowerCase().contains(_searchQuery) ||
+                                p.email.toLowerCase().contains(_searchQuery) ||
+                                p.children.any((c) => c.fullName.toLowerCase().contains(_searchQuery))).toList();
+
+                            final filteredGroups = _groups.where((g) =>
+                                _searchQuery.isEmpty ||
+                                g.name.toLowerCase().contains(_searchQuery)).toList();
+
+                            return ListView(
+                              padding: const EdgeInsets.all(16),
+                              children: [
+                                if (_selectedTab == StakeholderTab.drivers) ...[
+                                  OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppTheme.primaryNavy,
+                                      side: const BorderSide(color: AppTheme.primaryNavy),
+                                      minimumSize: const Size.fromHeight(46),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                    icon: const Icon(Icons.person_add),
+                                    label: Text(AppStrings.tr('btn_register_driver')),
+                                    onPressed: _openRegisterDriver,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  if (filteredDrivers.isEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 20),
+                                      child: Center(
+                                        child: Text(
+                                          AppStrings.tr('stakeholders_empty_drivers'),
+                                          style: const TextStyle(color: Colors.grey),
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    ...filteredDrivers.map((drv) => _buildDriverCard(drv)),
+                                ] else if (_selectedTab == StakeholderTab.parents) ...[
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: OutlinedButton.icon(
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: AppTheme.primaryNavy,
+                                            side: const BorderSide(color: AppTheme.primaryNavy),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                          ),
+                                          icon: const Icon(Icons.person_add, size: 18),
+                                          label: Text(AppStrings.tr('btn_register_parent'), style: const TextStyle(fontSize: 12)),
+                                          onPressed: _openRegisterParent,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: ElevatedButton.icon(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppTheme.primaryNavy,
+                                            foregroundColor: Colors.white,
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                          ),
+                                          icon: const Icon(Icons.child_care, size: 18),
+                                          label: Text(AppStrings.tr('btn_register_child'), style: const TextStyle(fontSize: 12)),
+                                          onPressed: _openRegisterChild,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  if (filteredParents.isEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 20),
+                                      child: Center(
+                                        child: Text(
+                                          AppStrings.tr('stakeholders_empty_parents'),
+                                          style: const TextStyle(color: Colors.grey),
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    ...filteredParents.map((par) => _buildParentCard(par)),
+                                ] else ...[
+                                  OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppTheme.primaryNavy,
+                                      side: const BorderSide(color: AppTheme.primaryNavy),
+                                      minimumSize: const Size.fromHeight(46),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                    icon: const Icon(Icons.group_add),
+                                    label: Text(AppStrings.tr('btn_create_group')),
+                                    onPressed: _openCreateGroup,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  if (filteredGroups.isEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 20),
+                                      child: Center(
+                                        child: Text(
+                                          AppStrings.tr('stakeholders_empty_groups'),
+                                          style: const TextStyle(color: Colors.grey),
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    ...filteredGroups.map((grp) => _buildGroupCard(grp)),
+                                ],
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -291,7 +308,7 @@ class _StakeholdersScreenState extends State<StakeholdersScreen> {
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
-          'Licencia: ${driver.licenseNumber} • ${driver.phone}\n${driver.email}',
+          '${AppStrings.trf('stakeholders_driver_license_prefix', {'license': driver.licenseNumber, 'phone': driver.phone})}\n${driver.email}',
           style: const TextStyle(fontSize: 12, height: 1.3),
         ),
         trailing: Container(
@@ -349,16 +366,16 @@ class _StakeholdersScreenState extends State<StakeholdersScreen> {
             ),
             if (parent.children.isNotEmpty) ...[
               const Divider(height: 20),
-              const Text(
-                'Estudiantes a cargo:',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryNavy),
+              Text(
+                AppStrings.tr('stakeholders_children_header'),
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryNavy),
               ),
               const SizedBox(height: 4),
               ...parent.children.map(
                 (c) => Padding(
                   padding: const EdgeInsets.only(left: 8, top: 2),
                   child: Text(
-                    '• ${c.fullName} (${c.age} años) — ${c.grade}',
+                    '• ${c.fullName} (${c.age} ${AppStrings.tr('common_years')}) — ${c.grade}',
                     style: const TextStyle(fontSize: 12),
                   ),
                 ),
@@ -371,6 +388,9 @@ class _StakeholdersScreenState extends State<StakeholdersScreen> {
   }
 
   Widget _buildGroupCard(StudentGroupModel group) {
+    final statusStr = group.isFinalized
+        ? AppStrings.tr('stakeholders_group_finalized')
+        : AppStrings.tr('stakeholders_group_draft');
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -385,7 +405,10 @@ class _StakeholdersScreenState extends State<StakeholdersScreen> {
         ),
         title: Text(group.name, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(
-          '${group.isFinalized ? "Finalizado" : "Borrador"} • ${group.studentIds.length} estudiantes asignados',
+          AppStrings.trf('stakeholders_group_students_count', {
+            'status': statusStr,
+            'count': group.studentIds.length,
+          }),
           style: const TextStyle(fontSize: 12),
         ),
         trailing: Icon(

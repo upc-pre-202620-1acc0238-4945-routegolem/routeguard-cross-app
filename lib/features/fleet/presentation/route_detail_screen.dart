@@ -181,12 +181,16 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '${route.stopCount} paradas registradas • Conductor: ${route.driverName} (${route.vehiclePlate})',
+                    AppStrings.trf('route_detail_summary', {
+                      'stops': route.stopCount,
+                      'driver': route.driverName,
+                      'plate': route.vehiclePlate,
+                    }),
                     style: const TextStyle(fontSize: 13, color: Colors.black54),
                   ),
                   if (route.departureTime != null)
                     Text(
-                      'Hora de salida: ${route.departureTime}',
+                      AppStrings.trf('route_detail_departure', {'time': route.departureTime!}),
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                     ),
                 ],
@@ -300,7 +304,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                     ),
                   ),
                   title: Text(wp.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                  subtitle: Text('${wp.address}\nHora aprox: ${wp.scheduledTime}'),
+                  subtitle: Text('${wp.address}\n${AppStrings.trf('route_approx_time', {'time': wp.scheduledTime})}'),
                 ),
               );
             }),

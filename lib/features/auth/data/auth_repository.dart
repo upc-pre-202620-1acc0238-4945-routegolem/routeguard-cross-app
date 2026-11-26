@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../../core/constants/api_constants.dart';
+import '../../../core/localization/app_strings.dart';
 import '../models/user_account.dart';
 
 class AuthRepository {
@@ -18,7 +19,7 @@ class AuthRepository {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Accept-Language': 'es',
+          'Accept-Language': AppStrings.languageCode,
         },
         body: jsonEncode({
           'email': cleanEmail,
@@ -47,14 +48,18 @@ class AuthRepository {
         final data = jsonDecode(response.body);
         return UserAccount.fromJson(data);
       } else if (response.statusCode == 401) {
-        throw Exception('Correo o contraseña incorrectos. Verifica tus credenciales.');
+        throw Exception(AppStrings.tr('auth_invalid_credentials'));
       } else {
         final errorData = _parseError(response.body);
-        throw Exception(errorData ?? 'Error de autenticación (Código: ${response.statusCode})');
+        throw Exception(
+          errorData ?? AppStrings.trf('auth_error_code', {'code': response.statusCode}),
+        );
       }
     } catch (e) {
       // If server specifically rejected credentials, do not mask with mock login
-      if (e.toString().contains('incorrectos')) {
+      if (e.toString().contains(AppStrings.tr('auth_invalid_credentials')) ||
+          e.toString().contains('incorrectos') ||
+          e.toString().contains('Incorrect')) {
         rethrow;
       }
 
@@ -63,7 +68,7 @@ class AuthRepository {
         if (cleanEmail.contains('admin')) {
           return UserAccount(
             id: 'usr_admin_01',
-            fullName: 'Carlos Mendoza (Administrador)',
+            fullName: AppStrings.tr('profile_demo_admin_name'),
             email: cleanEmail,
             role: 'ADMINISTRATOR',
             token: 'mock_token_admin_flutter',
@@ -74,7 +79,7 @@ class AuthRepository {
             cleanEmail.contains('conductor')) {
           return UserAccount(
             id: 'usr_driver_01',
-            fullName: 'Carlos Ramírez (Conductor)',
+            fullName: AppStrings.tr('profile_demo_driver_name'),
             email: cleanEmail,
             role: 'DRIVER',
             token: 'mock_token_driver_flutter',
@@ -83,7 +88,7 @@ class AuthRepository {
         } else {
           return UserAccount(
             id: 'usr_parent_01',
-            fullName: 'Laura Gómez (Apoderada)',
+            fullName: AppStrings.tr('profile_demo_parent_name'),
             email: cleanEmail,
             role: 'PARENT',
             token: 'mock_token_parent_flutter',

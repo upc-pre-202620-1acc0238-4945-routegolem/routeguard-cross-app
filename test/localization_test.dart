@@ -1,5 +1,11 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:routeguard_cross_app/core/localization/app_strings.dart';
+import 'package:routeguard_cross_app/core/utils/session_manager.dart';
+import 'package:routeguard_cross_app/features/alerts/presentation/notifications_screen.dart';
+import 'package:routeguard_cross_app/features/auth/presentation/login_screen.dart';
+import 'package:routeguard_cross_app/features/subscription/presentation/subscription_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   group('Bilingual Localization (i18n) Tests', () {
@@ -35,6 +41,38 @@ void main() {
 
     test('unknown key falls back gracefully', () {
       expect(AppStrings.tr('unknown_key_xyz'), 'unknown_key_xyz');
+    });
+
+    test('Spanish and English dictionaries have 100% key parity', () {
+      final esKeys = AppStrings.keysFor(AppLanguage.spanish);
+      final enKeys = AppStrings.keysFor(AppLanguage.english);
+
+      expect(esKeys, isNotEmpty);
+      expect(esKeys.difference(enKeys), isEmpty, reason: 'Keys missing in English');
+      expect(enKeys.difference(esKeys), isEmpty, reason: 'Keys missing in Spanish');
+    });
+
+    testWidgets('LoginScreen, NotificationsScreen, and SubscriptionScreen render in English',
+        (WidgetTester tester) async {
+      AppStrings.setLanguage(AppLanguage.english);
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final sessionManager = SessionManager(prefs);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: LoginScreen(sessionManager: sessionManager, onAuthenticated: () {}),
+        ),
+      );
+      expect(find.text('Sign In'), findsOneWidget);
+      expect(find.text('Forgot your password?'), findsOneWidget);
+
+      await tester.pumpWidget(const MaterialApp(home: NotificationsScreen()));
+      expect(find.text('Notification Center'), findsOneWidget);
+
+      await tester.pumpWidget(const MaterialApp(home: SubscriptionScreen()));
+      expect(find.text('Subscription Plans'), findsOneWidget);
+      expect(find.text('Available Plans'), findsOneWidget);
     });
   });
 }

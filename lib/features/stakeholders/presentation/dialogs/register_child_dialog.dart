@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/localization/app_strings.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../data/stakeholder_repository.dart';
 import '../../models/parent_model.dart';
@@ -83,12 +84,14 @@ class _RegisterChildDialogState extends State<RegisterChildDialog> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
-                  children: const [
-                    Icon(Icons.child_care, color: AppTheme.primaryNavy),
-                    SizedBox(width: 8),
-                    Text(
-                      'Registrar Estudiante',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  children: [
+                    const Icon(Icons.child_care, color: AppTheme.primaryNavy),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        AppStrings.tr('child_reg_title'),
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ],
                 ),
@@ -96,7 +99,10 @@ class _RegisterChildDialogState extends State<RegisterChildDialog> {
                 if (widget.parents.isNotEmpty)
                   DropdownButtonFormField<String>(
                     initialValue: _selectedParentId,
-                    decoration: const InputDecoration(labelText: 'Apoderado responsable', border: OutlineInputBorder()),
+                    decoration: InputDecoration(
+                      labelText: AppStrings.tr('child_reg_parent_label'),
+                      border: const OutlineInputBorder(),
+                    ),
                     items: widget.parents.map((p) {
                       return DropdownMenuItem<String>(
                         value: p.id,
@@ -110,27 +116,39 @@ class _RegisterChildDialogState extends State<RegisterChildDialog> {
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _nameController,
-                  decoration: const InputDecoration(labelText: 'Nombre y Apellidos del alumno', border: OutlineInputBorder()),
-                  validator: (v) => (v == null || v.isEmpty) ? 'Campo requerido' : null,
+                  decoration: InputDecoration(
+                    labelText: AppStrings.tr('child_reg_fullname_label'),
+                    border: const OutlineInputBorder(),
+                  ),
+                  validator: (v) => (v == null || v.isEmpty) ? AppStrings.tr('common_required_field') : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _ageController,
-                  decoration: const InputDecoration(labelText: 'Edad (años)', border: OutlineInputBorder()),
+                  decoration: InputDecoration(
+                    labelText: AppStrings.tr('child_reg_age_label'),
+                    border: const OutlineInputBorder(),
+                  ),
                   keyboardType: TextInputType.number,
-                  validator: (v) => (v == null || v.isEmpty) ? 'Campo requerido' : null,
+                  validator: (v) => (v == null || v.isEmpty) ? AppStrings.tr('common_required_field') : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _pickupController,
-                  decoration: const InputDecoration(labelText: 'Dirección de recojo', border: OutlineInputBorder()),
-                  validator: (v) => (v == null || v.isEmpty) ? 'Campo requerido' : null,
+                  decoration: InputDecoration(
+                    labelText: AppStrings.tr('child_reg_pickup_label'),
+                    border: const OutlineInputBorder(),
+                  ),
+                  validator: (v) => (v == null || v.isEmpty) ? AppStrings.tr('common_required_field') : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _dropoffController,
-                  decoration: const InputDecoration(labelText: 'Dirección de destino escolar', border: OutlineInputBorder()),
-                  validator: (v) => (v == null || v.isEmpty) ? 'Campo requerido' : null,
+                  decoration: InputDecoration(
+                    labelText: AppStrings.tr('child_reg_dropoff_label'),
+                    border: const OutlineInputBorder(),
+                  ),
+                  validator: (v) => (v == null || v.isEmpty) ? AppStrings.tr('common_required_field') : null,
                 ),
                 const SizedBox(height: 20),
                 Row(
@@ -138,7 +156,7 @@ class _RegisterChildDialogState extends State<RegisterChildDialog> {
                   children: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancelar'),
+                      child: Text(AppStrings.tr('common_cancel')),
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
@@ -153,7 +171,7 @@ class _RegisterChildDialogState extends State<RegisterChildDialog> {
                               height: 20,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
-                          : const Text('Registrar'),
+                          : Text(AppStrings.tr('common_register')),
                     ),
                   ],
                 ),

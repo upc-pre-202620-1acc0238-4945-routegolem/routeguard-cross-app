@@ -1,0 +1,78 @@
+name: Analyze, Test, Build Flutter APK & Deploy to Firebase
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    name: Analyze, Test, Build APK & Distribute
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.8'
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze Dart code
+        run: flutter analyze
+
+      - name: Run Flutter tests
+        run: flutter test
+
+      - name: Build Release APK
+        run: flutter build apk --release
+
+      - name: Upload APK as GitHub Actions Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: routeguard-flutter-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+
+      - name: Prepare Release Notes
+        id: meta
+        run: |
+          NOTES="Branch: ${GITHUB_REF_NAME} | Commit: ${GITHUB_SHA::7} - $(git log -1 --pretty=%s)"
+          echo "notes=$NOTES" >> "$GITHUB_OUTPUT"
+
+      - name: Check Firebase App Distribution Credentials
+        id: firebase_check
+        env:
+          HAS_SA: ${{ secrets.FIREBASE_SERVICE_CREDENTIALS != '' }}
+          HAS_APP_ID: ${{ secrets.FIREBASE_APP_ID != '' }}
+        run: |
+          if [ "$HAS_SA" = "true" ] && [ "$HAS_APP_ID" = "true" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Missing FIREBASE_SERVICE_CREDENTIALS or FIREBASE_APP_ID secret. Skipping Firebase App Distribution upload (APK is still available in GitHub Actions Artifacts)."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload APK to Firebase App Distribution
+        if: steps.firebase_check.outputs.enabled == 'true'
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ secrets.FIREBASE_APP_ID }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_CREDENTIALS }}
+          groups: ${{ vars.FIREBASE_TESTER_GROUPS != '' && vars.FIREBASE_TESTER_GROUPS || 'testers' }}
+          releaseNotes: ${{ steps.meta.outputs.notes }}
+          file: build/app/outputs/flutter-apk/app-release.apk

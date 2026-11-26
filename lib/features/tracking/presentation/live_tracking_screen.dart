@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/session_manager.dart';
 import '../data/tracking_repository.dart';
@@ -75,19 +76,45 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                   child: const Icon(Icons.verified_user, color: AppTheme.primaryNavy),
                 ),
                 const SizedBox(width: 10),
-                const Text(
-                  'Ficha de Seguridad y Trazabilidad',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppTheme.primaryNavy),
+                Expanded(
+                  child: Text(
+                    AppStrings.tr('tracking_vehicle_sheet_title'),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppTheme.primaryNavy),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            _buildVehicleDetailRow(Icons.directions_bus, 'Unidad Vehicular', 'Mercedes-Benz Sprinter 516 (2023)'),
-            _buildVehicleDetailRow(Icons.confirmation_number_outlined, 'Placa de Rodaje', _telemetry?.vehiclePlate ?? 'ABC-789'),
-            _buildVehicleDetailRow(Icons.palette_outlined, 'Color de la unidad', 'Blanco Ártico con cintas reflectivas'),
-            _buildVehicleDetailRow(Icons.badge_outlined, 'Conductor asignado', '${_telemetry?.driverName ?? "Carlos Ramírez"} · DNI: 08492019'),
-            _buildVehicleDetailRow(Icons.security, 'Seguro Obligatorio (SOAT)', 'Vigente hasta Dic 2026 (La Positiva)'),
-            _buildVehicleDetailRow(Icons.phone_android, 'Teléfono del chofer', '+51 987 654 321'),
+            _buildVehicleDetailRow(
+              Icons.directions_bus,
+              AppStrings.tr('tracking_vehicle_unit_label'),
+              AppStrings.tr('tracking_vehicle_unit_val'),
+            ),
+            _buildVehicleDetailRow(
+              Icons.confirmation_number_outlined,
+              AppStrings.tr('tracking_vehicle_plate_label'),
+              _telemetry?.vehiclePlate ?? 'ABC-789',
+            ),
+            _buildVehicleDetailRow(
+              Icons.palette_outlined,
+              AppStrings.tr('tracking_vehicle_color_label'),
+              AppStrings.tr('tracking_vehicle_color_val'),
+            ),
+            _buildVehicleDetailRow(
+              Icons.badge_outlined,
+              AppStrings.tr('tracking_vehicle_driver_label'),
+              '${_telemetry?.driverName ?? "Carlos Ramírez"} · DNI: 08492019',
+            ),
+            _buildVehicleDetailRow(
+              Icons.security,
+              AppStrings.tr('tracking_vehicle_soat_label'),
+              AppStrings.tr('tracking_vehicle_soat_val'),
+            ),
+            _buildVehicleDetailRow(
+              Icons.phone_android,
+              AppStrings.tr('tracking_vehicle_phone_label'),
+              '+51 987 654 321',
+            ),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
@@ -99,7 +126,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
                 icon: const Icon(Icons.phone),
-                label: const Text('Llamar al Conductor'),
+                label: Text(AppStrings.tr('tracking_btn_call_driver')),
                 onPressed: () {
                   Navigator.pop(ctx);
                   _callDriver();
@@ -145,8 +172,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Marcando al conductor: +51 987 654 321'),
+          SnackBar(
+            content: Text(AppStrings.tr('tracking_calling_snack')),
             backgroundColor: Colors.green,
           ),
         );
@@ -175,12 +202,14 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Itinerario y Paradas de Ruta',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppTheme.primaryNavy),
+                Expanded(
+                  child: Text(
+                    AppStrings.tr('tracking_stops_sheet_title'),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppTheme.primaryNavy),
+                  ),
                 ),
                 Text(
-                  '${_stops.length} paradas',
+                  AppStrings.trf('tracking_stops_count', {'count': _stops.length}),
                   style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold),
                 ),
               ],
@@ -193,7 +222,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                 separatorBuilder: (context, index) => const Divider(height: 1),
                 itemBuilder: (context, idx) {
                   final stop = _stops[idx];
-                  final isSchool = stop.studentName.contains('Colegio');
+                  final isSchool = stop.studentName.contains('Colegio') || stop.studentName.contains('School');
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: CircleAvatar(
@@ -246,329 +275,324 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
         ? LatLng(_telemetry!.currentLatitude, _telemetry!.currentLongitude)
         : const LatLng(-12.0965, -77.0360);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Seguimiento en Vivo',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            if (_telemetry != null)
-              Text(
-                _telemetry!.routeName,
-                style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.normal),
-              ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.list_alt_rounded),
-            tooltip: 'Ver paradas restantes',
-            onPressed: _showStopsSheet,
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Actualizar telemetría',
-            onPressed: _loadTrackingData,
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Stack(
+    return ValueListenableBuilder<AppLanguage>(
+      valueListenable: AppStrings.currentLanguage,
+      builder: (context, _, _) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. Interactive OpenStreetMap via flutter_map
-                FlutterMap(
-                  mapController: _mapController,
-                  options: MapOptions(
-                    initialCenter: busPos,
-                    initialZoom: 14.5,
+                Text(
+                  AppStrings.tr('tracking_title'),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                if (_telemetry != null)
+                  Text(
+                    _telemetry!.routeName,
+                    style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.normal),
                   ),
+              ],
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.list_alt_rounded),
+                tooltip: AppStrings.tr('tracking_tooltip_stops'),
+                onPressed: _showStopsSheet,
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                tooltip: AppStrings.tr('tracking_tooltip_refresh'),
+                onPressed: _loadTrackingData,
+              ),
+            ],
+          ),
+          body: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Stack(
                   children: [
-                    TileLayer(
-                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'pe.edu.upc.routeguard.crossapp',
-                    ),
-                    // Route Polyline
-                    PolylineLayer(
-                      polylines: [
-                        Polyline(
-                          points: [
-                            LatLng(-12.0920, -77.0280),
-                            busPos,
-                            LatLng(-12.1050, -77.0320),
-                            LatLng(-12.1120, -77.0350),
-                          ],
-                          strokeWidth: 4.5,
-                          color: AppTheme.primaryNavy.withValues(alpha: 0.8),
-                        ),
-                      ],
-                    ),
-                    // Markers Layer
-                    MarkerLayer(
-                      markers: [
-                        // School Bus Marker
-                        Marker(
-                          point: busPos,
-                          width: 54,
-                          height: 54,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryNavy,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.3),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                              border: Border.all(color: Colors.white, width: 2.5),
-                            ),
-                            child: const Icon(
-                              Icons.directions_bus,
-                              color: Colors.white,
-                              size: 28,
-                            ),
-                          ),
-                        ),
-                        // Student Stops Markers
-                        ..._stops.map((stop) {
-                          final isSchool = stop.studentName.contains('Colegio');
-                          final isPicked = stop.isPickedUp;
-                          return Marker(
-                            point: LatLng(stop.latitude, stop.longitude),
-                            width: 44,
-                            height: 44,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: isSchool
-                                    ? Colors.red.shade700
-                                    : (isPicked ? Colors.green.shade600 : Colors.orange.shade700),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2),
-                              ),
-                              child: Icon(
-                                isSchool ? Icons.school : (isPicked ? Icons.check : Icons.person_pin),
-                                color: Colors.white,
-                                size: 22,
-                              ),
-                            ),
-                          );
-                        }),
-                      ],
-                    ),
-                  ],
-                ),
-
-                // Floating Map Legend (Heuristic #9 & Roxana V-02)
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.94),
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    FlutterMap(
+                      mapController: _mapController,
+                      options: MapOptions(
+                        initialCenter: busPos,
+                        initialZoom: 14.5,
+                      ),
                       children: [
-                        _buildLegendItem(AppTheme.primaryNavy, 'Van Escolar'),
-                        const SizedBox(height: 4),
-                        _buildLegendItem(Colors.green.shade600, 'Abordó'),
-                        const SizedBox(height: 4),
-                        _buildLegendItem(Colors.orange.shade700, 'Próxima'),
-                        const SizedBox(height: 4),
-                        _buildLegendItem(Colors.red.shade700, 'Colegio'),
+                        TileLayer(
+                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          userAgentPackageName: 'pe.edu.upc.routeguard.crossapp',
+                        ),
+                        PolylineLayer(
+                          polylines: [
+                            Polyline(
+                              points: [
+                                LatLng(-12.0920, -77.0280),
+                                busPos,
+                                LatLng(-12.1050, -77.0320),
+                                LatLng(-12.1120, -77.0350),
+                              ],
+                              strokeWidth: 4.5,
+                              color: AppTheme.primaryNavy.withValues(alpha: 0.8),
+                            ),
+                          ],
+                        ),
+                        MarkerLayer(
+                          markers: [
+                            Marker(
+                              point: busPos,
+                              width: 54,
+                              height: 54,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryNavy,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                  border: Border.all(color: Colors.white, width: 2.5),
+                                ),
+                                child: const Icon(
+                                  Icons.directions_bus,
+                                  color: Colors.white,
+                                  size: 28,
+                                ),
+                              ),
+                            ),
+                            ..._stops.map((stop) {
+                              final isSchool = stop.studentName.contains('Colegio') || stop.studentName.contains('School');
+                              final isPicked = stop.isPickedUp;
+                              return Marker(
+                                point: LatLng(stop.latitude, stop.longitude),
+                                width: 44,
+                                height: 44,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: isSchool
+                                        ? Colors.red.shade700
+                                        : (isPicked ? Colors.green.shade600 : Colors.orange.shade700),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white, width: 2),
+                                  ),
+                                  child: Icon(
+                                    isSchool ? Icons.school : (isPicked ? Icons.check : Icons.person_pin),
+                                    color: Colors.white,
+                                    size: 22,
+                                  ),
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
                       ],
                     ),
-                  ),
-                ),
-
-                // 2. Telemetry Overlay Card at the bottom
-                Positioned(
-                  left: 16,
-                  right: 16,
-                  bottom: 16,
-                  child: Card(
-                    elevation: 6,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Trip Status Header
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.94),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildLegendItem(AppTheme.primaryNavy, AppStrings.tr('tracking_legend_bus')),
+                            const SizedBox(height: 4),
+                            _buildLegendItem(Colors.green.shade600, AppStrings.tr('tracking_legend_boarded')),
+                            const SizedBox(height: 4),
+                            _buildLegendItem(Colors.orange.shade700, AppStrings.tr('tracking_legend_next')),
+                            const SizedBox(height: 4),
+                            _buildLegendItem(Colors.red.shade700, AppStrings.tr('tracking_legend_school')),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 16,
+                      right: 16,
+                      bottom: 16,
+                      child: Card(
+                        elevation: 6,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Container(
-                                    width: 10,
-                                    height: 10,
-                                    decoration: const BoxDecoration(
-                                      color: Colors.green,
-                                      shape: BoxShape.circle,
-                                    ),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 10,
+                                        height: 10,
+                                        decoration: const BoxDecoration(
+                                          color: Colors.green,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        AppStrings.tr('tracking_trip_in_progress'),
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.green,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 8),
-                                  const Text(
-                                    'VIAJE EN CURSO',
-                                    style: TextStyle(
+                                  Text(
+                                    '${_telemetry?.speedKmh ?? 0} km/h',
+                                    style: const TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.green,
-                                      letterSpacing: 0.5,
+                                      color: AppTheme.primaryNavy,
                                     ),
                                   ),
                                 ],
                               ),
-                              Text(
-                                '${_telemetry?.speedKmh ?? 0} km/h',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.primaryNavy,
+                              if ((_telemetry?.speedKmh ?? 0) <= 0) ...[
+                                const SizedBox(height: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.errorContainer,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: AppTheme.errorColor.withValues(alpha: 0.3)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.warning_amber_rounded, color: AppTheme.errorColor, size: 16),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          AppStrings.tr('tracking_gps_stale'),
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: AppTheme.errorColor,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          // RuwaLabs Heurística #8: Alerta de telemetría GPS desactualizada
-                          if ((_telemetry?.speedKmh ?? 0) <= 0) ...[
-                            const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: AppTheme.errorContainer,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: AppTheme.errorColor.withValues(alpha: 0.3)),
-                              ),
-                              child: const Row(
+                              ],
+                              const Divider(height: 20),
+                              Row(
                                 children: [
-                                  Icon(Icons.warning_amber_rounded, color: AppTheme.errorColor, size: 16),
-                                  SizedBox(width: 6),
+                                  CircleAvatar(
+                                    radius: 20,
+                                    backgroundColor: AppTheme.primaryNavy.withValues(alpha: 0.1),
+                                    child: const Icon(Icons.person, color: AppTheme.primaryNavy),
+                                  ),
+                                  const SizedBox(width: 12),
                                   Expanded(
-                                    child: Text(
-                                      'Ubicación GPS desactualizada (>3 min). Posible pérdida de cobertura móvil del conductor.',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: AppTheme.errorColor,
-                                        fontWeight: FontWeight.w600,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _telemetry?.driverName ?? 'Carlos Ramírez',
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                        ),
+                                        Text(
+                                          AppStrings.trf('tracking_plate_prefix', {
+                                            'plate': _telemetry?.vehiclePlate ?? 'ABC-789',
+                                          }),
+                                          style: const TextStyle(fontSize: 12, color: Colors.black54),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.phone, color: Colors.green),
+                                    tooltip: AppStrings.tr('tracking_tooltip_call'),
+                                    onPressed: _callDriver,
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.shield_outlined, color: AppTheme.primaryNavy),
+                                    tooltip: AppStrings.tr('tracking_tooltip_security'),
+                                    onPressed: _showDriverVehicleSheet,
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade50,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.green.shade200),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        AppStrings.tr('tracking_child_boarded_eta'),
+                                        style: const TextStyle(fontSize: 12, color: Colors.black87),
                                       ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                          const Divider(height: 20),
-
-                          // Driver & Unit Details with Quick Call & Vehicle Sheet
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 20,
-                                backgroundColor: AppTheme.primaryNavy.withValues(alpha: 0.1),
-                                child: const Icon(Icons.person, color: AppTheme.primaryNavy),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      _telemetry?.driverName ?? 'Carlos Ramírez',
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                    ),
-                                    Text(
-                                      'Placa: ${_telemetry?.vehiclePlate ?? "ABC-789"} · Mercedes-Benz',
-                                      style: const TextStyle(fontSize: 12, color: Colors.black54),
+                                    TextButton(
+                                      onPressed: _showStopsSheet,
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                      child: Text(
+                                        AppStrings.tr('tracking_btn_itinerary'),
+                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.phone, color: Colors.green),
-                                tooltip: 'Llamar conductor (Miriam V-03)',
-                                onPressed: _callDriver,
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.shield_outlined, color: AppTheme.primaryNavy),
-                                tooltip: 'Ficha de seguridad (Carmen V-01)',
-                                onPressed: _showDriverVehicleSheet,
+                              const SizedBox(height: 10),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF047857),
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                  ),
+                                  icon: const Icon(Icons.call, size: 18),
+                                  label: Text(
+                                    AppStrings.trf('tracking_btn_call_driver_named', {
+                                      'name': _telemetry?.driverName ?? 'Carlos Ramírez',
+                                    }),
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                  onPressed: _callDriver,
+                                ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
-
-                          // Child Status Card with explicit ETA
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.green.shade200),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.check_circle, color: Colors.green, size: 20),
-                                const SizedBox(width: 8),
-                                const Expanded(
-                                  child: Text(
-                                    'Tu hijo Mateo Gómez abordó la movilidad (07:25 AM). ETA estimada colegio: 07:50 AM.',
-                                    style: TextStyle(fontSize: 12, color: Colors.black87),
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: _showStopsSheet,
-                                  style: TextButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    minimumSize: Size.zero,
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                  ),
-                                  child: const Text('Itinerario', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-
-                          // Prominent Call Button (Parity with Android Native BigButton)
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF047857),
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                              ),
-                              icon: const Icon(Icons.call, size: 18),
-                              label: Text(
-                                'Llamar al conductor (${_telemetry?.driverName ?? "Carlos Ramírez"})',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                              ),
-                              onPressed: _callDriver,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
+        );
+      },
     );
   }
 }

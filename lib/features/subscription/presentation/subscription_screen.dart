@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/subscription_plan.dart';
 
@@ -18,7 +19,6 @@ class SubscriptionScreen extends StatefulWidget {
 
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
   late String _activePlanId;
-  final List<SubscriptionPlan> _plans = SubscriptionPlan.getAvailablePlans();
 
   @override
   void initState() {
@@ -89,9 +89,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            const Text(
-                              'Checkout Seguro',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            Text(
+                              AppStrings.tr('stripe_checkout_title'),
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
@@ -120,7 +120,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                               ),
                               Text(
-                                'Facturación mensual recurrente',
+                                AppStrings.tr('stripe_monthly_billing'),
                                 style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                               ),
                             ],
@@ -137,15 +137,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       ),
                     ),
                     const SizedBox(height: 18),
-                    const Text(
-                      'Datos de la tarjeta de crédito/débito',
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    Text(
+                      AppStrings.tr('stripe_card_section'),
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                     ),
                     const SizedBox(height: 10),
                     TextFormField(
                       controller: cardNumberController,
                       decoration: InputDecoration(
-                        labelText: 'Número de tarjeta',
+                        labelText: AppStrings.tr('stripe_card_number'),
                         prefixIcon: const Icon(Icons.credit_card, color: Color(0xFF635BFF)),
                         suffixIcon: const Padding(
                           padding: EdgeInsets.all(10.0),
@@ -163,7 +163,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           child: TextFormField(
                             controller: expiryController,
                             decoration: InputDecoration(
-                              labelText: 'Vencimiento (MM/AA)',
+                              labelText: AppStrings.tr('stripe_card_expiry'),
                               filled: true,
                               fillColor: Colors.white,
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -175,7 +175,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           child: TextFormField(
                             controller: cvcController,
                             decoration: InputDecoration(
-                              labelText: 'CVC / CVV',
+                              labelText: AppStrings.tr('stripe_card_cvc'),
                               filled: true,
                               fillColor: Colors.white,
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -188,7 +188,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     TextFormField(
                       controller: nameController,
                       decoration: InputDecoration(
-                        labelText: 'Titular de la tarjeta',
+                        labelText: AppStrings.tr('stripe_card_holder'),
                         filled: true,
                         fillColor: Colors.white,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -201,7 +201,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            'Cifrado SSL de 256 bits y cumplimiento PCI DSS Nivel 1.',
+                            AppStrings.tr('stripe_pci_notice'),
                             style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
                           ),
                         ),
@@ -223,7 +223,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                                 isProcessing = true;
                               });
 
-                              // Simulación del proceso de pago seguro en Stripe
                               await Future.delayed(const Duration(milliseconds: 1400));
 
                               if (!context.mounted) return;
@@ -243,7 +242,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
                           : Text(
-                              'Pagar S/ ${plan.priceSoles.toStringAsFixed(2)} con Stripe',
+                              AppStrings.trf('stripe_btn_pay', {
+                                'amount': plan.priceSoles.toStringAsFixed(2),
+                              }),
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                             ),
                     ),
@@ -263,14 +264,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
-          children: const [
-            Icon(Icons.check_circle, color: Colors.green, size: 28),
-            SizedBox(width: 10),
-            Text('¡Suscripción Activa!'),
+          children: [
+            const Icon(Icons.check_circle, color: Colors.green, size: 28),
+            const SizedBox(width: 10),
+            Expanded(child: Text(AppStrings.tr('stripe_success_title'))),
           ],
         ),
         content: Text(
-          'Tu cuenta ha sido actualizada al ${plan.name}. El recibo digital ha sido generado a través de Stripe y enviado a tu correo institucional.',
+          AppStrings.trf('stripe_success_msg', {'plan': plan.name}),
           style: const TextStyle(fontSize: 14),
         ),
         actions: [
@@ -280,7 +281,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Entendido'),
+            child: Text(AppStrings.tr('common_understood')),
           ),
         ],
       ),
@@ -289,99 +290,102 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.surfaceBackground,
-      appBar: AppBar(
-        title: const Text('Planes de Suscripción'),
-        elevation: 0,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // Active Subscription Status Card (Matches Android Native exactly)
-          Card(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: Colors.grey.shade300),
-            ),
-            elevation: 2,
-            color: Colors.white,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return ValueListenableBuilder<AppLanguage>(
+      valueListenable: AppStrings.currentLanguage,
+      builder: (context, _, _) {
+        final plans = SubscriptionPlan.getAvailablePlans();
+
+        return Scaffold(
+          backgroundColor: AppTheme.surfaceBackground,
+          appBar: AppBar(
+            title: Text(AppStrings.tr('plans_screen_title')),
+            elevation: 0,
+          ),
+          body: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: Colors.grey.shade300),
+                ),
+                elevation: 2,
+                color: Colors.white,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Plan Intermedio',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryNavy,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFD1FAE5),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'Activo',
-                          style: TextStyle(
-                            color: Color(0xFF064E3B),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            AppStrings.tr('plans_current_name'),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.primaryNavy,
+                            ),
                           ),
-                        ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD1FAE5),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              AppStrings.tr('plans_status_active'),
+                              style: const TextStyle(
+                                color: Color(0xFF064E3B),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        AppStrings.tr('plans_active_summary'),
+                        style: const TextStyle(color: Color(0xFF475569), fontSize: 13),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Tu suscripción se encuentra activa. Quedan 28 días de vigencia en el periodo actual.',
-                    style: TextStyle(color: Color(0xFF475569), fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Section Title: Planes Disponibles
-          Text(
-            'Planes Disponibles',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: AppTheme.primaryNavy,
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          ..._plans.map((plan) {
-            final isCurrent = plan.id == _activePlanId;
-            return _buildPlanCard(plan, isCurrent);
-          }),
-          const SizedBox(height: 12),
-          Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.lock, size: 14, color: Colors.black54),
-                const SizedBox(width: 6),
-                Text(
-                  'Transacciones procesadas de forma segura con Stripe',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                AppStrings.tr('plans_available_heading'),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: AppTheme.primaryNavy,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ...plans.map((plan) {
+                final isCurrent = plan.id == _activePlanId;
+                return _buildPlanCard(plan, isCurrent);
+              }),
+              const SizedBox(height: 12),
+              Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.lock, size: 14, color: Colors.black54),
+                    const SizedBox(width: 6),
+                    Text(
+                      AppStrings.tr('plans_stripe_footer'),
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
           ),
-          const SizedBox(height: 20),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -391,9 +395,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
         side: BorderSide(
-          color: isCurrent
-              ? AppTheme.primaryNavy
-              : Colors.grey.shade300,
+          color: isCurrent ? AppTheme.primaryNavy : Colors.grey.shade300,
           width: isCurrent ? 2.0 : 1.0,
         ),
       ),
@@ -424,9 +426,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       color: const Color(0xFFD1FAE5),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Text(
-                      'Plan Actual',
-                      style: TextStyle(
+                    child: Text(
+                      AppStrings.tr('plans_current_badge'),
+                      style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF064E3B),
@@ -486,7 +488,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 ),
                 onPressed: () => _showStripePaymentModal(plan),
                 child: Text(
-                  isCurrent ? 'Renovar suscripción con Stripe' : 'Cambiar a este plan con Stripe',
+                  isCurrent ? AppStrings.tr('plans_btn_renew') : AppStrings.tr('plans_btn_switch'),
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                 ),
               ),

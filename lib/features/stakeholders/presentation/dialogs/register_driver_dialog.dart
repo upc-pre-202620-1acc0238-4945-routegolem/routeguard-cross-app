@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/localization/app_strings.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../data/stakeholder_repository.dart';
 
@@ -86,46 +87,63 @@ class _RegisterDriverDialogState extends State<RegisterDriverDialog> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
-            children: const [
-              Icon(Icons.badge, color: AppTheme.primaryNavy),
-              SizedBox(width: 8),
-              Text(
-                'Registrar Conductor',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            children: [
+              const Icon(Icons.badge, color: AppTheme.primaryNavy),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  AppStrings.tr('driver_reg_title'),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 16),
           TextFormField(
             controller: _firstNameController,
-            decoration: const InputDecoration(labelText: 'Nombres', border: OutlineInputBorder()),
-            validator: (v) => (v == null || v.isEmpty) ? 'Campo requerido' : null,
+            decoration: InputDecoration(
+              labelText: AppStrings.tr('driver_reg_firstname'),
+              border: const OutlineInputBorder(),
+            ),
+            validator: (v) => (v == null || v.isEmpty) ? AppStrings.tr('common_required_field') : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
             controller: _lastNameController,
-            decoration: const InputDecoration(labelText: 'Apellidos', border: OutlineInputBorder()),
-            validator: (v) => (v == null || v.isEmpty) ? 'Campo requerido' : null,
+            decoration: InputDecoration(
+              labelText: AppStrings.tr('driver_reg_lastname'),
+              border: const OutlineInputBorder(),
+            ),
+            validator: (v) => (v == null || v.isEmpty) ? AppStrings.tr('common_required_field') : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
             controller: _phoneController,
-            decoration: const InputDecoration(labelText: 'Teléfono', border: OutlineInputBorder()),
+            decoration: InputDecoration(
+              labelText: AppStrings.tr('driver_reg_phone'),
+              border: const OutlineInputBorder(),
+            ),
             keyboardType: TextInputType.phone,
-            validator: (v) => (v == null || v.isEmpty) ? 'Campo requerido' : null,
+            validator: (v) => (v == null || v.isEmpty) ? AppStrings.tr('common_required_field') : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
             controller: _licenseController,
-            decoration: const InputDecoration(labelText: 'N.º de Licencia', border: OutlineInputBorder()),
-            validator: (v) => (v == null || v.isEmpty) ? 'Campo requerido' : null,
+            decoration: InputDecoration(
+              labelText: AppStrings.tr('driver_reg_license'),
+              border: const OutlineInputBorder(),
+            ),
+            validator: (v) => (v == null || v.isEmpty) ? AppStrings.tr('common_required_field') : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
             controller: _emailController,
-            decoration: const InputDecoration(labelText: 'Correo electrónico', border: OutlineInputBorder()),
+            decoration: InputDecoration(
+              labelText: AppStrings.tr('driver_reg_email'),
+              border: const OutlineInputBorder(),
+            ),
             keyboardType: TextInputType.emailAddress,
-            validator: (v) => (v == null || !v.contains('@')) ? 'Correo inválido' : null,
+            validator: (v) => (v == null || !v.contains('@')) ? AppStrings.tr('common_invalid_email') : null,
           ),
           const SizedBox(height: 20),
           Row(
@@ -133,7 +151,7 @@ class _RegisterDriverDialogState extends State<RegisterDriverDialog> {
             children: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Cancelar'),
+                child: Text(AppStrings.tr('common_cancel')),
               ),
               const SizedBox(width: 8),
               ElevatedButton(
@@ -148,7 +166,7 @@ class _RegisterDriverDialogState extends State<RegisterDriverDialog> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
-                    : const Text('Registrar'),
+                    : Text(AppStrings.tr('common_register')),
               ),
             ],
           ),
@@ -164,10 +182,10 @@ class _RegisterDriverDialogState extends State<RegisterDriverDialog> {
       children: [
         const Icon(Icons.check_circle, color: Colors.green, size: 48),
         const SizedBox(height: 12),
-        const Text(
-          '¡Conductor Registrado!',
+        Text(
+          AppStrings.tr('driver_reg_success'),
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 14),
         Container(
@@ -180,10 +198,13 @@ class _RegisterDriverDialogState extends State<RegisterDriverDialog> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Credenciales de Acceso Provisionales:', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text(
+                AppStrings.tr('driver_reg_credentials_title'),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 8),
-              Text('Usuario: ${_generatedCredentials!['email']}'),
-              Text('Contraseña temporal: ${_generatedCredentials!['tempPassword']}'),
+              Text(AppStrings.trf('driver_reg_user_prefix', {'email': _generatedCredentials!['email'] ?? ''})),
+              Text(AppStrings.trf('driver_reg_temp_pass_prefix', {'password': _generatedCredentials!['tempPassword'] ?? ''})),
             ],
           ),
         ),
@@ -191,7 +212,7 @@ class _RegisterDriverDialogState extends State<RegisterDriverDialog> {
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryNavy, foregroundColor: Colors.white),
           onPressed: () => Navigator.pop(context),
-          child: const Text('Listo'),
+          child: Text(AppStrings.tr('common_done')),
         ),
       ],
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../localization/app_strings.dart';
 
 class SessionManager {
   static const String _keyToken = 'auth_token';
@@ -10,6 +11,7 @@ class SessionManager {
   static const String _keyOrganizationId = 'organization_id';
   static const String _keySeenTutorialPrefix = 'seen_tutorial_';
   static const String _keyAvatarPath = 'avatar_path';
+  static const String _keyLanguage = 'app_language';
 
   static final ValueNotifier<String> activeRoleNotifier = ValueNotifier<String>('PARENT');
   static final ValueNotifier<String?> avatarPathNotifier = ValueNotifier<String?>(null);
@@ -19,6 +21,10 @@ class SessionManager {
   SessionManager(this._prefs) {
     activeRoleNotifier.value = normalizeRole(_prefs.getString(_keyRole) ?? 'PARENT');
     avatarPathNotifier.value = _prefs.getString(_keyAvatarPath);
+    final savedLang = _prefs.getString(_keyLanguage);
+    if (savedLang != null && savedLang.isNotEmpty) {
+      AppStrings.setLanguageCode(savedLang);
+    }
   }
 
   static Future<SessionManager> create() async {
@@ -53,10 +59,16 @@ class SessionManager {
 
   String? get token => _prefs.getString(_keyToken);
   String? get userId => _prefs.getString(_keyUserId);
-  String get fullName => _prefs.getString(_keyFullName) ?? 'Usuario RouteGuard';
+  String get fullName => _prefs.getString(_keyFullName) ?? AppStrings.tr('profile_default_user');
   String get email => _prefs.getString(_keyEmail) ?? '';
   String get role => normalizeRole(_prefs.getString(_keyRole) ?? 'PARENT');
   String get organizationId => _prefs.getString(_keyOrganizationId) ?? 'org_school_01';
+  String get languageCode => _prefs.getString(_keyLanguage) ?? AppStrings.languageCode;
+
+  Future<void> setLanguage(AppLanguage language) async {
+    AppStrings.setLanguage(language);
+    await _prefs.setString(_keyLanguage, AppStrings.languageCode);
+  }
 
   bool get isAuthenticated => token != null && token!.isNotEmpty;
   bool get isAdmin => role == 'ADMINISTRATOR';

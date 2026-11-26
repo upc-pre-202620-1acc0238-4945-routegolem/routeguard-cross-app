@@ -4,18 +4,41 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/attendance_report_dialog.dart';
+import '../../../core/widgets/trip_history_sheet.dart';
+import '../../../core/widgets/vehicle_docs_dialog.dart';
+import '../../alerts/models/safety_alert.dart';
+import '../../tracking/data/tracking_repository.dart';
 import '../models/driver_passenger.dart';
 
+enum DriverTripState { inProgress, finished, cancelled }
+
 class DriverTripScreen extends StatefulWidget {
-  const DriverTripScreen({super.key});
+  final TrackingRepository? repository;
+
+  const DriverTripScreen({super.key, this.repository});
 
   @override
   State<DriverTripScreen> createState() => _DriverTripScreenState();
 }
 
 class _DriverTripScreenState extends State<DriverTripScreen> {
+  static const String _activeTripId = 'TRP-2026-08';
+
+  late final TrackingRepository _repository;
   final List<DriverPassenger> _passengers = DriverPassenger.getInitialRoster();
-  bool _isRouteFinished = false;
+  DriverTripState _tripState = DriverTripState.inProgress;
+  String? _cancelReasonKey;
+  String? _activeIncidentTypeKey;
+  int? _activeIncidentDelayMins;
+
+  bool get _isTripActive => _tripState == DriverTripState.inProgress;
+
+  @override
+  void initState() {
+    super.initState();
+    _repository = widget.repository ?? TrackingRepository();
+  }
 
   int get _boardedCount =>
       _passengers.where((p) => p.status == PassengerBoardingStatus.boarded).length;
@@ -57,9 +80,10 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
     );
   }
 
-  void _showReportIncidentDialog() {
+  void _showReportIncidentDialog({String initialTypeKey = 'driver_incident_traffic'}) {
     final noteController = TextEditingController();
-    String selectedTypeKey = 'driver_incident_traffic';
+    String selectedTypeKey = initialTypeKey;
+    int selectedDelayMinutes = 15;
 
     showModalBottomSheet(
       context: context,
@@ -79,109 +103,280 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 44,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 26),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          AppStrings.tr('driver_incident_title'),
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  DropdownButtonFormField<String>(
-                    initialValue: selectedTypeKey,
-                    decoration: InputDecoration(
-                      labelText: AppStrings.tr('driver_incident_type_label'),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    items: [
-                      DropdownMenuItem(
-                        value: 'driver_incident_traffic',
-                        child: Text(AppStrings.tr('driver_incident_traffic')),
-                      ),
-                      DropdownMenuItem(
-                        value: 'driver_incident_detour',
-                        child: Text(AppStrings.tr('driver_incident_detour')),
-                      ),
-                      DropdownMenuItem(
-                        value: 'driver_incident_mechanical',
-                        child: Text(AppStrings.tr('driver_incident_mechanical')),
-                      ),
-                      DropdownMenuItem(
-                        value: 'driver_incident_delay',
-                        child: Text(AppStrings.tr('driver_incident_delay')),
-                      ),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        setModalState(() => selectedTypeKey = val);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: noteController,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      labelText: AppStrings.tr('driver_incident_notes_label'),
-                      hintText: AppStrings.tr('driver_incident_notes_hint'),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange.shade800,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    icon: const Icon(Icons.send_rounded),
-                    label: Text(
-                      AppStrings.tr('driver_incident_send_btn'),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          backgroundColor: Colors.orange.shade800,
-                          content: Text(
-                            AppStrings.trf('driver_incident_sent_snack', {
-                              'type': AppStrings.tr(selectedTypeKey),
-                            }),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 26),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            AppStrings.tr('driver_incident_title'),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                           ),
-                          behavior: SnackBarBehavior.floating,
                         ),
-                      );
-                    },
-                  ),
-                ],
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedTypeKey,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: AppStrings.tr('driver_incident_type_label'),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      items: [
+                        DropdownMenuItem(
+                          value: 'driver_incident_roadblock',
+                          child: Text(AppStrings.tr('driver_incident_roadblock')),
+                        ),
+                        DropdownMenuItem(
+                          value: 'driver_incident_traffic',
+                          child: Text(AppStrings.tr('driver_incident_traffic')),
+                        ),
+                        DropdownMenuItem(
+                          value: 'driver_incident_detour',
+                          child: Text(AppStrings.tr('driver_incident_detour')),
+                        ),
+                        DropdownMenuItem(
+                          value: 'driver_incident_mechanical',
+                          child: Text(AppStrings.tr('driver_incident_mechanical')),
+                        ),
+                        DropdownMenuItem(
+                          value: 'driver_incident_delay',
+                          child: Text(AppStrings.tr('driver_incident_delay')),
+                        ),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          setModalState(() => selectedTypeKey = val);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      AppStrings.tr('driver_incident_delay_label'),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      children: [15, 30, 45].map((mins) {
+                        return ChoiceChip(
+                          label: Text(AppStrings.trf('driver_incident_delay_mins', {'mins': mins})),
+                          selected: selectedDelayMinutes == mins,
+                          onSelected: (selected) {
+                            if (selected) {
+                              setModalState(() => selectedDelayMinutes = mins);
+                            }
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: noteController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        labelText: AppStrings.tr('driver_incident_notes_label'),
+                        hintText: AppStrings.tr('driver_incident_notes_hint'),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange.shade800,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      icon: const Icon(Icons.send_rounded),
+                      label: Text(
+                        AppStrings.tr('driver_incident_send_btn'),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: () async {
+                        final notes = noteController.text.trim();
+                        final label = AppStrings.tr(selectedTypeKey);
+                        Navigator.pop(ctx);
+
+                        await _repository.reportTripIncident(
+                          tripId: _activeTripId,
+                          category: selectedTypeKey,
+                          delayMinutes: selectedDelayMinutes,
+                          notes: notes,
+                        );
+
+                        SafetyAlert.addAlert(
+                          title: 'Incidencia en Ruta: $label',
+                          titleEn: 'Route Incident: $label',
+                          message:
+                              'Retraso estimado: +$selectedDelayMinutes min.${notes.isNotEmpty ? ' $notes' : ''}',
+                          messageEn:
+                              'Estimated delay: +$selectedDelayMinutes min.${notes.isNotEmpty ? ' $notes' : ''}',
+                          type: 'TRAFFIC',
+                        );
+
+                        if (mounted) {
+                          setState(() {
+                            _activeIncidentTypeKey = selectedTypeKey;
+                            _activeIncidentDelayMins = selectedDelayMinutes;
+                          });
+                          ScaffoldMessenger.of(this.context).showSnackBar(
+                            SnackBar(
+                              backgroundColor: Colors.orange.shade800,
+                              content: Text(
+                                AppStrings.trf('driver_incident_sent_snack', {
+                                  'type': '$label (+$selectedDelayMinutes min)',
+                                }),
+                              ),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
               ),
             );
           },
         );
       },
     );
+  }
+
+  Future<void> _showForceMajeureCancelDialog() async {
+    const reasonKeys = [
+      'driver_cancel_reason_mechanical',
+      'driver_cancel_reason_weather',
+      'driver_cancel_reason_roadblock',
+      'driver_cancel_reason_other',
+    ];
+    String? selectedReasonKey;
+    final notesCtrl = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                const Icon(Icons.cancel_outlined, color: AppTheme.errorColor),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    AppStrings.tr('driver_cancel_dialog_title'),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppTheme.errorColor),
+                  ),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    AppStrings.tr('driver_cancel_dialog_subtitle'),
+                    style: const TextStyle(fontSize: 13, height: 1.35),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedReasonKey,
+                    isExpanded: true,
+                    hint: Text(AppStrings.tr('driver_cancel_reason_label')),
+                    decoration: InputDecoration(
+                      labelText: AppStrings.tr('driver_cancel_reason_label'),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    items: reasonKeys
+                        .map((k) => DropdownMenuItem(value: k, child: Text(AppStrings.tr(k))))
+                        .toList(),
+                    onChanged: (val) => setDialogState(() => selectedReasonKey = val),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: notesCtrl,
+                    maxLines: 2,
+                    decoration: InputDecoration(
+                      labelText: AppStrings.tr('driver_cancel_notes_label'),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(AppStrings.tr('common_cancel')),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.errorColor,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(0, 40),
+                ),
+                onPressed: selectedReasonKey == null ? null : () => Navigator.pop(ctx, true),
+                child: Text(AppStrings.tr('driver_cancel_confirm_btn')),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    if (confirmed == true && selectedReasonKey != null && mounted) {
+      final reasonText = AppStrings.tr(selectedReasonKey!);
+      final notes = notesCtrl.text.trim();
+
+      await _repository.cancelTripForceMajeure(
+        tripId: _activeTripId,
+        reason: reasonText,
+        notes: notes,
+      );
+
+      SafetyAlert.addAlert(
+        title: '🚨 VIAJE CANCELADO POR FUERZA MAYOR',
+        titleEn: '🚨 TRIP CANCELLED (FORCE MAJEURE)',
+        message: 'Motivo: $reasonText.${notes.isNotEmpty ? ' $notes' : ''}',
+        messageEn: 'Reason: $reasonText.${notes.isNotEmpty ? ' $notes' : ''}',
+        type: 'PANIC',
+      );
+
+      if (mounted) {
+        setState(() {
+          _tripState = DriverTripState.cancelled;
+          _cancelReasonKey = selectedReasonKey;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppStrings.tr('driver_cancel_snack')),
+            backgroundColor: AppTheme.errorColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+    notesCtrl.dispose();
   }
 
   void _confirmFinishTrip() {
@@ -207,7 +402,7 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
             onPressed: () {
               Navigator.pop(ctx);
               setState(() {
-                _isRouteFinished = true;
+                _tripState = DriverTripState.finished;
               });
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -292,10 +487,22 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
           appBar: AppBar(
             title: Text(AppStrings.tr('driver_route_title')),
             actions: [
+              TextButton.icon(
+                onPressed: () => showTripHistorySheet(
+                  context,
+                  repository: _repository,
+                  token: '',
+                ),
+                icon: const Icon(Icons.history_rounded, size: 18),
+                label: Text(
+                  AppStrings.tr('trip_history_btn'),
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ),
               IconButton(
                 icon: const Icon(Icons.warning_amber_rounded, color: Colors.amber),
                 tooltip: AppStrings.tr('driver_btn_incident'),
-                onPressed: _showReportIncidentDialog,
+                onPressed: _isTripActive ? () => _showReportIncidentDialog() : null,
               ),
             ],
           ),
@@ -360,22 +567,138 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: _isRouteFinished ? Colors.grey.shade200 : Colors.green.shade100,
+                            color: _tripState == DriverTripState.cancelled
+                                ? AppTheme.errorContainer
+                                : _tripState == DriverTripState.finished
+                                    ? Colors.grey.shade200
+                                    : Colors.green.shade100,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            _isRouteFinished
-                                ? AppStrings.tr('driver_badge_finished')
-                                : AppStrings.tr('driver_badge_in_progress'),
+                            _tripState == DriverTripState.cancelled
+                                ? AppStrings.tr('driver_badge_cancelled')
+                                : _tripState == DriverTripState.finished
+                                    ? AppStrings.tr('driver_badge_finished')
+                                    : AppStrings.tr('driver_badge_in_progress'),
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
-                              color: _isRouteFinished ? Colors.grey.shade700 : Colors.green.shade900,
+                              color: _tripState == DriverTripState.cancelled
+                                  ? AppTheme.errorColor
+                                  : _tripState == DriverTripState.finished
+                                      ? Colors.grey.shade700
+                                      : Colors.green.shade900,
                             ),
                           ),
                         ),
                       ],
                     ),
+                    const SizedBox(height: 10),
+                    // US-12 SOAT & License status + Verify Docs
+                    SizedBox(
+                      width: double.infinity,
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              AppStrings.trf('docs_summary_chip', {'date': '12/2026', 'cat': 'A-IIIa'}),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF047857),
+                              ),
+                            ),
+                          ),
+                          TextButton.icon(
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppTheme.primaryNavy,
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            icon: const Icon(Icons.verified_user_outlined, size: 15),
+                            label: Text(
+                              AppStrings.tr('docs_view_verify_btn'),
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                            onPressed: () => showVehicleDocsDialog(
+                              context,
+                              driverName: 'Carlos Ramírez',
+                              vehiclePlate: 'ABC-789',
+                              licenseNumber: 'Q-12345678',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (_tripState == DriverTripState.cancelled && _cancelReasonKey != null) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppTheme.errorContainer,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppTheme.errorColor.withValues(alpha: 0.4)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline, color: AppTheme.errorColor, size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                AppStrings.trf('driver_cancelled_banner', {
+                                  'reason': AppStrings.tr(_cancelReasonKey!),
+                                }),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.errorColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    if (_activeIncidentTypeKey != null) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.orange.shade300),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.traffic, color: Colors.orange.shade800, size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                AppStrings.trf('driver_incident_active_banner', {
+                                  'type': AppStrings.tr(_activeIncidentTypeKey!),
+                                  'mins': _activeIncidentDelayMins ?? 15,
+                                }),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.orange.shade900,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -623,14 +946,14 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                         AppStrings.tr('driver_btn_incident'),
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                       ),
-                      onPressed: _showReportIncidentDialog,
+                      onPressed: _isTripActive ? () => _showReportIncidentDialog() : null,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _isRouteFinished ? Colors.grey : AppTheme.primaryNavy,
+                        backgroundColor: !_isTripActive ? Colors.grey : AppTheme.primaryNavy,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -640,7 +963,53 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                         AppStrings.tr('driver_btn_finish'),
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                       ),
-                      onPressed: _isRouteFinished ? null : _confirmFinishTrip,
+                      onPressed: !_isTripActive ? null : _confirmFinishTrip,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // US-29 Roadblock quick action & US-17 Attendance Report
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.deepOrange.shade800,
+                        side: BorderSide(color: Colors.deepOrange.shade300),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      icon: const Icon(Icons.traffic_outlined, size: 17),
+                      label: Text(
+                        AppStrings.tr('driver_incident_roadblock_btn'),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: _isTripActive
+                          ? () => _showReportIncidentDialog(initialTypeKey: 'driver_incident_roadblock')
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.primaryNavy,
+                        side: const BorderSide(color: AppTheme.primaryNavy),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      icon: const Icon(Icons.assignment_turned_in_outlined, size: 17),
+                      label: Text(
+                        AppStrings.tr('attendance_report_btn'),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: () => showAttendanceReportDialog(
+                        context,
+                        routeName: AppStrings.tr('driver_route_title'),
+                        passengers: _passengers,
+                      ),
                     ),
                   ),
                 ],
@@ -661,7 +1030,24 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                   AppStrings.tr('driver_btn_dropoff_all'),
                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                 ),
-                onPressed: _isRouteFinished ? null : _arriveAllAtSchool,
+                onPressed: !_isTripActive ? null : _arriveAllAtSchool,
+              ),
+              const SizedBox(height: 10),
+
+              // US-21 Force Majeure Cancellation button
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.errorColor,
+                  side: const BorderSide(color: AppTheme.errorColor),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: const Icon(Icons.cancel_outlined, size: 18),
+                label: Text(
+                  AppStrings.tr('driver_btn_force_majeure'),
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+                onPressed: !_isTripActive ? null : _showForceMajeureCancelDialog,
               ),
               const SizedBox(height: 14),
 
@@ -783,7 +1169,7 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                       ),
                     ),
                     OutlinedButton.icon(
-                      onPressed: () => _updateStatus(passenger, PassengerBoardingStatus.pending),
+                      onPressed: _isTripActive ? () => _updateStatus(passenger, PassengerBoardingStatus.pending) : null,
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.grey.shade800,
                         side: BorderSide(color: Colors.grey.shade400),
@@ -820,7 +1206,7 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                       ),
                     ),
                     OutlinedButton(
-                      onPressed: () => _updateStatus(passenger, PassengerBoardingStatus.pending),
+                      onPressed: _isTripActive ? () => _updateStatus(passenger, PassengerBoardingStatus.pending) : null,
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.grey.shade800,
                         side: BorderSide(color: Colors.grey.shade400),
@@ -833,7 +1219,7 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                     ),
                     const SizedBox(width: 6),
                     ElevatedButton.icon(
-                      onPressed: () => _updateStatus(passenger, PassengerBoardingStatus.boarded),
+                      onPressed: _isTripActive ? () => _updateStatus(passenger, PassengerBoardingStatus.boarded) : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
@@ -866,7 +1252,7 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                         AppStrings.tr('driver_status_absent'),
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                       ),
-                      onPressed: () => _updateStatus(passenger, PassengerBoardingStatus.absent),
+                      onPressed: _isTripActive ? () => _updateStatus(passenger, PassengerBoardingStatus.absent) : null,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -882,7 +1268,7 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                         AppStrings.tr('driver_status_boarded'),
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                       ),
-                      onPressed: () => _updateStatus(passenger, PassengerBoardingStatus.boarded),
+                      onPressed: _isTripActive ? () => _updateStatus(passenger, PassengerBoardingStatus.boarded) : null,
                     ),
                   ),
                 ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/vehicle_docs_dialog.dart';
 import '../data/stakeholder_repository.dart';
 import '../models/driver_model.dart';
 import '../models/parent_model.dart';
@@ -297,35 +298,100 @@ class _StakeholdersScreenState extends State<StakeholdersScreen> {
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          backgroundColor: AppTheme.primaryNavy.withValues(alpha: 0.1),
-          child: const Icon(Icons.badge, color: AppTheme.primaryNavy),
-        ),
-        title: Text(
-          driver.fullName,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text(
-          '${AppStrings.trf('stakeholders_driver_license_prefix', {'license': driver.licenseNumber, 'phone': driver.phone})}\n${driver.email}',
-          style: const TextStyle(fontSize: 12, height: 1.3),
-        ),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.green.shade50,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.green.shade300),
-          ),
-          child: Text(
-            driver.vehiclePlate,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: Colors.green.shade800,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  backgroundColor: AppTheme.primaryNavy.withValues(alpha: 0.1),
+                  child: const Icon(Icons.badge, color: AppTheme.primaryNavy),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        driver.fullName,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${AppStrings.trf('stakeholders_driver_license_prefix', {'license': driver.licenseNumber, 'phone': driver.phone})}\n${driver.email}',
+                        style: const TextStyle(fontSize: 12, height: 1.3, color: Colors.black54),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green.shade300),
+                  ),
+                  child: Text(
+                    driver.vehiclePlate,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green.shade800,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      AppStrings.trf('docs_summary_chip', {'date': '12/2026', 'cat': 'A-IIIa'}),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF047857),
+                      ),
+                    ),
+                  ),
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppTheme.primaryNavy,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    icon: const Icon(Icons.verified_user_outlined, size: 15),
+                    label: Text(
+                      AppStrings.tr('docs_view_verify_btn'),
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                    onPressed: () => showVehicleDocsDialog(
+                      context,
+                      driverName: driver.fullName,
+                      vehiclePlate: driver.vehiclePlate,
+                      licenseNumber: driver.licenseNumber,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

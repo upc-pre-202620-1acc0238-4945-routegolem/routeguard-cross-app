@@ -5,30 +5,46 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/session_manager.dart';
+import '../../../core/widgets/trip_history_sheet.dart';
+import '../../../core/widgets/vehicle_docs_dialog.dart';
+import '../../alerts/models/safety_alert.dart';
 import '../data/tracking_repository.dart';
 import '../models/student_stop.dart';
 import '../models/trip_telemetry.dart';
 
 class LiveTrackingScreen extends StatefulWidget {
   final SessionManager sessionManager;
+  final TrackingRepository? repository;
 
-  const LiveTrackingScreen({super.key, required this.sessionManager});
+  const LiveTrackingScreen({
+    super.key,
+    required this.sessionManager,
+    this.repository,
+  });
 
   @override
   State<LiveTrackingScreen> createState() => _LiveTrackingScreenState();
 }
 
 class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
-  final _repository = TrackingRepository();
+  late final TrackingRepository _repository;
   final _mapController = MapController();
 
   TripTelemetry? _telemetry;
   List<StudentStop> _stops = [];
   bool _isLoading = true;
 
+  // US-09 Early Absence state
+  String? _activeAbsenceChild;
+  String? _activeAbsenceReasonKey;
+
+  // US-14 Service Rating state
+  int? _submittedRating;
+
   @override
   void initState() {
     super.initState();
+    _repository = widget.repository ?? TrackingRepository();
     _loadTrackingData();
   }
 
@@ -103,7 +119,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
             _buildVehicleDetailRow(
               Icons.badge_outlined,
               AppStrings.tr('tracking_vehicle_driver_label'),
-              '${_telemetry?.driverName ?? "Carlos Ramírez"} · DNI: 08492019',
+              '${_telemetry?.driverName ?? "Carlos Ramírez"} · Lic. A-IIIa (Q-12345678)',
             ),
             _buildVehicleDetailRow(
               Icons.security,
@@ -115,23 +131,50 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
               AppStrings.tr('tracking_vehicle_phone_label'),
               '+51 987 654 321',
             ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryNavy,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.primaryNavy,
+                      side: const BorderSide(color: AppTheme.primaryNavy),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    icon: const Icon(Icons.verified_user_outlined, size: 18),
+                    label: Text(
+                      AppStrings.tr('docs_view_verify_btn'),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _openVehicleDocsDialog();
+                    },
+                  ),
                 ),
-                icon: const Icon(Icons.phone),
-                label: Text(AppStrings.tr('tracking_btn_call_driver')),
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  _callDriver();
-                },
-              ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryNavy,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(0, 44),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    icon: const Icon(Icons.phone, size: 18),
+                    label: Text(
+                      AppStrings.tr('tracking_btn_call_driver'),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _callDriver();
+                    },
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -254,6 +297,260 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     );
   }
 
+  void _openVehicleDocsDialog() {
+    showVehicleDocsDialog(
+      context,
+      driverName: _telemetry?.driverName ?? 'Carlos Ramírez',
+      vehiclePlate: _telemetry?.vehiclePlate ?? 'ABC-789',
+      licenseNumber: 'Q-12345678',
+    );
+  }
+
+  void _openTripHistory() {
+    showTripHistorySheet(
+      context,
+      repository: _repository,
+      token: widget.sessionManager.token ?? '',
+      allowRating: true,
+      onRateTrip: (record, stars, _) {
+        if (mounted) {
+          setState(() => _submittedRating = stars);
+        }
+      },
+    );
+  }
+
+  Future<void> _showReportAbsenceDialog() async {
+    final childOptions = ['Mateo Gómez', 'Sofía Gómez'];
+    String selectedChild = childOptions.first;
+    String selectedReasonKey = 'absence_reason_medical';
+    final notesCtrl = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                const Icon(Icons.event_busy, color: AppTheme.primaryNavy),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    AppStrings.tr('absence_dialog_title'),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppTheme.primaryNavy),
+                  ),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedChild,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: AppStrings.tr('absence_child_label'),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    items: childOptions
+                        .map((child) => DropdownMenuItem(value: child, child: Text(child)))
+                        .toList(),
+                    onChanged: (val) {
+                      if (val != null) setDialogState(() => selectedChild = val);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedReasonKey,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: AppStrings.tr('absence_reason_label'),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    items: [
+                      'absence_reason_medical',
+                      'absence_reason_family',
+                      'absence_reason_other',
+                    ]
+                        .map((key) => DropdownMenuItem(value: key, child: Text(AppStrings.tr(key))))
+                        .toList(),
+                    onChanged: (val) {
+                      if (val != null) setDialogState(() => selectedReasonKey = val);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: notesCtrl,
+                    maxLines: 2,
+                    decoration: InputDecoration(
+                      labelText: AppStrings.tr('absence_notes_label'),
+                      hintText: AppStrings.tr('absence_notes_hint'),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(AppStrings.tr('common_cancel')),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryNavy,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(0, 40),
+                ),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(AppStrings.tr('absence_submit_btn')),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final notes = notesCtrl.text.trim();
+      final reasonEs = selectedReasonKey == 'absence_reason_medical'
+          ? 'Cita médica'
+          : selectedReasonKey == 'absence_reason_family'
+              ? 'Viaje familiar'
+              : 'Otro motivo';
+      final reasonEn = selectedReasonKey == 'absence_reason_medical'
+          ? 'Medical appointment'
+          : selectedReasonKey == 'absence_reason_family'
+              ? 'Family trip'
+              : 'Other';
+
+      await _repository.reportEarlyAbsence(
+        tripId: _telemetry?.tripId ?? 'TRP-2026-08',
+        studentName: selectedChild,
+        reason: AppStrings.tr(selectedReasonKey),
+        notes: notes,
+        token: widget.sessionManager.token ?? '',
+      );
+
+      SafetyAlert.addAlert(
+        title: 'Ausencia Temprana Reportada',
+        titleEn: 'Early Absence Reported',
+        message: '$selectedChild no abordará hoy ($reasonEs).${notes.isNotEmpty ? ' $notes' : ''}',
+        messageEn: '$selectedChild will not board today ($reasonEn).${notes.isNotEmpty ? ' $notes' : ''}',
+        type: 'INFO',
+      );
+
+      if (mounted) {
+        setState(() {
+          _activeAbsenceChild = selectedChild;
+          _activeAbsenceReasonKey = selectedReasonKey;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppStrings.trf('absence_saved_snack', {'child': selectedChild})),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+    notesCtrl.dispose();
+  }
+
+  Future<void> _showRateServiceDialog() async {
+    int selectedStars = _submittedRating ?? 5;
+    final commentCtrl = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text(
+              AppStrings.tr('rate_service_dialog_title'),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppTheme.primaryNavy),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  _telemetry?.routeName ?? AppStrings.tr('driver_route_title'),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(5, (index) {
+                    final star = index + 1;
+                    return IconButton(
+                      icon: Icon(
+                        star <= selectedStars ? Icons.star_rounded : Icons.star_border_rounded,
+                        color: Colors.amber.shade600,
+                        size: 32,
+                      ),
+                      tooltip: '$star',
+                      onPressed: () => setDialogState(() => selectedStars = star),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: commentCtrl,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    labelText: AppStrings.tr('rate_service_comment_label'),
+                    hintText: AppStrings.tr('rate_service_comment_hint'),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(AppStrings.tr('common_cancel')),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryNavy,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(0, 40),
+                ),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(AppStrings.tr('rate_service_submit_btn')),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await _repository.submitServiceRating(
+        tripId: _telemetry?.tripId ?? 'TRP-2026-08',
+        stars: selectedStars,
+        comment: commentCtrl.text.trim(),
+        token: widget.sessionManager.token ?? '',
+      );
+      if (mounted) {
+        setState(() => _submittedRating = selectedStars);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppStrings.trf('rate_service_saved_snack', {'stars': selectedStars})),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+    commentCtrl.dispose();
+  }
+
   Widget _buildLegendItem(Color color, String text) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -295,6 +592,11 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
               ],
             ),
             actions: [
+              IconButton(
+                icon: const Icon(Icons.history_rounded),
+                tooltip: AppStrings.tr('trip_history_btn'),
+                onPressed: _openTripHistory,
+              ),
               IconButton(
                 icon: const Icon(Icons.list_alt_rounded),
                 tooltip: AppStrings.tr('tracking_tooltip_stops'),
@@ -426,165 +728,282 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                       child: Card(
                         elevation: 6,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 10,
-                                        height: 10,
-                                        decoration: const BoxDecoration(
-                                          color: Colors.green,
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        AppStrings.tr('tracking_trip_in_progress'),
-                                        style: const TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.green,
-                                          letterSpacing: 0.5,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Text(
-                                    '${_telemetry?.speedKmh ?? 0} km/h',
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppTheme.primaryNavy,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              if ((_telemetry?.speedKmh ?? 0) <= 0) ...[
-                                const SizedBox(height: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.errorContainer,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: AppTheme.errorColor.withValues(alpha: 0.3)),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.warning_amber_rounded, color: AppTheme.errorColor, size: 16),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: Text(
-                                          AppStrings.tr('tracking_gps_stale'),
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            color: AppTheme.errorColor,
-                                            fontWeight: FontWeight.w600,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxHeight: MediaQuery.of(context).size.height * 0.56,
+                          ),
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          width: 10,
+                                          height: 10,
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFF10B981),
+                                            shape: BoxShape.circle,
                                           ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                              const Divider(height: 20),
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 20,
-                                    backgroundColor: AppTheme.primaryNavy.withValues(alpha: 0.1),
-                                    child: const Icon(Icons.person, color: AppTheme.primaryNavy),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
+                                        const SizedBox(width: 8),
                                         Text(
-                                          _telemetry?.driverName ?? 'Carlos Ramírez',
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                        ),
-                                        Text(
-                                          AppStrings.trf('tracking_plate_prefix', {
-                                            'plate': _telemetry?.vehiclePlate ?? 'ABC-789',
-                                          }),
-                                          style: const TextStyle(fontSize: 12, color: Colors.black54),
+                                          AppStrings.tr('tracking_trip_in_progress'),
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF047857),
+                                            letterSpacing: 0.5,
+                                          ),
                                         ),
                                       ],
                                     ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.phone, color: Colors.green),
-                                    tooltip: AppStrings.tr('tracking_tooltip_call'),
-                                    onPressed: _callDriver,
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.shield_outlined, color: AppTheme.primaryNavy),
-                                    tooltip: AppStrings.tr('tracking_tooltip_security'),
-                                    onPressed: _showDriverVehicleSheet,
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.shade50,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.green.shade200),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.check_circle, color: Colors.green, size: 20),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        AppStrings.tr('tracking_child_boarded_eta'),
-                                        style: const TextStyle(fontSize: 12, color: Colors.black87),
-                                      ),
-                                    ),
-                                    TextButton(
-                                      onPressed: _showStopsSheet,
-                                      style: TextButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        minimumSize: Size.zero,
-                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                      ),
-                                      child: Text(
-                                        AppStrings.tr('tracking_btn_itinerary'),
-                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                    Text(
+                                      '${_telemetry?.speedKmh ?? 0} km/h',
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppTheme.primaryNavy,
                                       ),
                                     ),
                                   ],
                                 ),
-                              ),
-                              const SizedBox(height: 10),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF047857),
-                                    foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                if ((_telemetry?.speedKmh ?? 0) <= 0) ...[
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.errorContainer,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: AppTheme.errorColor.withValues(alpha: 0.3)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.warning_amber_rounded, color: AppTheme.errorColor, size: 16),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            AppStrings.tr('tracking_gps_stale'),
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              color: AppTheme.errorColor,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                  icon: const Icon(Icons.call, size: 18),
-                                  label: Text(
-                                    AppStrings.trf('tracking_btn_call_driver_named', {
-                                      'name': _telemetry?.driverName ?? 'Carlos Ramírez',
-                                    }),
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                ],
+                                if (_activeAbsenceChild != null) ...[
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.shade50,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: Colors.amber.shade300),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.event_busy, color: Colors.amber.shade900, size: 16),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            AppStrings.trf('absence_active_banner', {
+                                              'child': _activeAbsenceChild!,
+                                              'reason': AppStrings.tr(_activeAbsenceReasonKey ?? 'absence_reason_other'),
+                                            }),
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.amber.shade900,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                  onPressed: _callDriver,
+                                ],
+                                const Divider(height: 20),
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 20,
+                                      backgroundColor: AppTheme.primaryNavy.withValues(alpha: 0.1),
+                                      child: const Icon(Icons.person, color: AppTheme.primaryNavy),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            _telemetry?.driverName ?? 'Carlos Ramírez',
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                          ),
+                                          Text(
+                                            AppStrings.trf('tracking_plate_prefix', {
+                                              'plate': _telemetry?.vehiclePlate ?? 'ABC-789',
+                                            }),
+                                            style: const TextStyle(fontSize: 12, color: Colors.black54),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.phone, color: Colors.green),
+                                      tooltip: AppStrings.tr('tracking_tooltip_call'),
+                                      onPressed: _callDriver,
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.shield_outlined, color: AppTheme.primaryNavy),
+                                      tooltip: AppStrings.tr('tracking_tooltip_security'),
+                                      onPressed: _showDriverVehicleSheet,
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 8),
+                                // US-12 SOAT & License summary + Verify Docs
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: Wrap(
+                                    spacing: 8,
+                                    runSpacing: 6,
+                                    alignment: WrapAlignment.spaceBetween,
+                                    crossAxisAlignment: WrapCrossAlignment.center,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          AppStrings.trf('docs_summary_chip', {'date': '12/2026', 'cat': 'A-IIIa'}),
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF047857),
+                                          ),
+                                        ),
+                                      ),
+                                      TextButton.icon(
+                                        onPressed: _openVehicleDocsDialog,
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: AppTheme.primaryNavy,
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          minimumSize: Size.zero,
+                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                        icon: const Icon(Icons.verified_user_outlined, size: 14),
+                                        label: Text(
+                                          AppStrings.tr('docs_view_verify_btn'),
+                                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade50,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.green.shade200),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          AppStrings.tr('tracking_child_boarded_eta'),
+                                          style: const TextStyle(fontSize: 12, color: Colors.black87),
+                                        ),
+                                      ),
+                                      TextButton(
+                                        onPressed: _showStopsSheet,
+                                        style: TextButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          minimumSize: Size.zero,
+                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                        child: Text(
+                                          AppStrings.tr('tracking_btn_itinerary'),
+                                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                // US-15 Trip History, US-09 Report Absence, US-14 Rate Service
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 6,
+                                  alignment: WrapAlignment.center,
+                                  children: [
+                                    ActionChip(
+                                      avatar: const Icon(Icons.history_rounded, size: 15, color: AppTheme.primaryNavy),
+                                      label: Text(
+                                        AppStrings.tr('trip_history_btn'),
+                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                      ),
+                                      onPressed: _openTripHistory,
+                                    ),
+                                    ActionChip(
+                                      avatar: const Icon(Icons.event_busy_outlined, size: 15, color: AppTheme.primaryNavy),
+                                      label: Text(
+                                        AppStrings.tr('absence_report_btn'),
+                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                      ),
+                                      onPressed: _showReportAbsenceDialog,
+                                    ),
+                                    ActionChip(
+                                      avatar: Icon(
+                                        _submittedRating != null ? Icons.star_rounded : Icons.star_outline_rounded,
+                                        size: 16,
+                                        color: Colors.amber.shade800,
+                                      ),
+                                      backgroundColor: _submittedRating != null ? Colors.amber.shade50 : null,
+                                      label: Text(
+                                        _submittedRating != null
+                                            ? AppStrings.trf('rate_service_chip', {'stars': _submittedRating!})
+                                            : AppStrings.tr('rate_service_btn'),
+                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                      ),
+                                      onPressed: _showRateServiceDialog,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF047857),
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                    ),
+                                    icon: const Icon(Icons.call, size: 18),
+                                    label: Text(
+                                      AppStrings.trf('tracking_btn_call_driver_named', {
+                                        'name': _telemetry?.driverName ?? 'Carlos Ramírez',
+                                      }),
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    ),
+                                    onPressed: _callDriver,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),

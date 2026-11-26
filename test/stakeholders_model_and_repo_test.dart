@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:routeguard_cross_app/features/stakeholders/data/stakeholder_repository.dart';
 import 'package:routeguard_cross_app/features/stakeholders/models/driver_model.dart';
 import 'package:routeguard_cross_app/features/stakeholders/models/parent_model.dart';
@@ -113,7 +115,9 @@ void main() {
     });
 
     test('StakeholderRepository CRUD operations in offline fallback mode', () async {
-      final repo = StakeholderRepository();
+      final repo = StakeholderRepository(
+        client: MockClient((_) async => http.Response('offline', 503)),
+      );
 
       final drivers = await repo.getDrivers();
       expect(drivers.length, greaterThanOrEqualTo(2));

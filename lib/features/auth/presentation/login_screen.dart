@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../../core/database/local_database.dart';
 import '../../../core/localization/app_strings.dart';
+import '../../../core/network/platform_features_repository.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/session_manager.dart';
 import '../data/auth_repository.dart';
@@ -21,13 +24,14 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController(text: 'parent@routeguard.pe');
-  final _passwordController = TextEditingController(text: 'password123');
+  final _passwordController = TextEditingController(text: 'parent123');
 
   bool _obscurePassword = true;
   bool _isLoading = false;
   String? _errorMessage;
 
   final _authRepository = AuthRepository();
+  final _platformRepo = PlatformFeaturesRepository();
 
   @override
   void dispose() {
@@ -39,7 +43,12 @@ class _LoginScreenState extends State<LoginScreen> {
   void _selectDemoUser(String email, String roleName) {
     setState(() {
       _emailController.text = email;
-      _passwordController.text = 'password123';
+      final lower = email.toLowerCase();
+      _passwordController.text = lower.contains('admin')
+          ? 'admin123'
+          : lower.contains('driver')
+              ? 'driver123'
+              : 'parent123';
       _errorMessage = null;
     });
   }
@@ -67,6 +76,22 @@ class _LoginScreenState extends State<LoginScreen> {
         organizationId: account.organizationId,
       );
 
+      if (account.preferredLanguage != null && account.preferredLanguage!.isNotEmpty) {
+        await widget.sessionManager.setLanguage(
+          account.preferredLanguage!.toLowerCase().startsWith('en')
+              ? AppLanguage.english
+              : AppLanguage.spanish,
+        );
+      }
+
+      if (account.photoData != null && account.photoData!.isNotEmpty) {
+        await LocalDatabase.instance.upsertRow(
+          'user_avatar_cache',
+          {'user_id': account.id, 'photo_data': account.photoData, 'pending_sync': 0},
+          pk: 'user_id',
+        );
+      }
+
       if (mounted) {
         widget.onAuthenticated();
       }
@@ -90,16 +115,86 @@ class _LoginScreenState extends State<LoginScreen> {
       context: context,
       builder: (ctx) => _ForgotPasswordDialog(
         initialEmail: _emailController.text.trim(),
+        onOpenResetCode: (email) => _showResetCodeDialog(email),
         onSubmitted: (email) {
+          unawaited(_platformRepo.requestPasswordReset(email));
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(AppStrings.trf('login_forgot_sent_msg', {'email': email})),
               backgroundColor: const Color(0xFF10B981),
               behavior: SnackBarBehavior.floating,
+              action: SnackBarAction(
+                label: AppStrings.tr('login_reset_have_code_btn'),
+                textColor: Colors.white,
+                onPressed: () => _showResetCodeDialog(email),
+              ),
             ),
           );
         },
+      ),
+    );
+  }
+
+  void _showResetCodeDialog(String initialEmail) {
+    final emailCtrl = TextEditingController(text: initialEmail);
+    final codeCtrl = TextEditingController();
+    final passCtrl = TextEditingController();
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          AppStrings.tr('login_reset_code_title'),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(labelText: AppStrings.tr('login_email_label')),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: codeCtrl,
+              decoration: InputDecoration(labelText: AppStrings.tr('login_reset_code_label')),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: passCtrl,
+              obscureText: true,
+              decoration: InputDecoration(labelText: AppStrings.tr('login_reset_new_pass_label')),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(AppStrings.tr('common_cancel')),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryNavy, foregroundColor: Colors.white),
+            onPressed: () async {
+              final ok = await _platformRepo.confirmPasswordReset(
+                emailCtrl.text.trim(),
+                codeCtrl.text.trim(),
+                passCtrl.text,
+              );
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(AppStrings.tr(ok ? 'login_reset_success_msg' : 'login_reset_error_msg')),
+                    backgroundColor: ok ? const Color(0xFF10B981) : AppTheme.errorColor,
+                  ),
+                );
+              }
+            },
+            child: Text(AppStrings.tr('login_reset_confirm_btn')),
+          ),
+        ],
       ),
     );
   }
@@ -660,10 +755,12 @@ class _LoginScreenState extends State<LoginScreen> {
 class _ForgotPasswordDialog extends StatefulWidget {
   final String initialEmail;
   final ValueChanged<String> onSubmitted;
+  final ValueChanged<String>? onOpenResetCode;
 
   const _ForgotPasswordDialog({
     required this.initialEmail,
     required this.onSubmitted,
+    this.onOpenResetCode,
   });
 
   @override
@@ -747,6 +844,14 @@ class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
         ),
       ),
       actions: [
+        TextButton(
+          onPressed: () {
+            final email = _emailCtrl.text.trim();
+            Navigator.pop(context);
+            widget.onOpenResetCode?.call(email);
+          },
+          child: Text(AppStrings.tr('login_reset_have_code_btn')),
+        ),
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: Text(AppStrings.tr('common_cancel')),

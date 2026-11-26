@@ -4,6 +4,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/attendance_report_dialog.dart';
+import '../../alerts/models/safety_alert.dart';
+import '../../driver/models/driver_passenger.dart';
 import '../../tracking/models/trip_telemetry.dart';
 import '../data/monitor_repository.dart';
 
@@ -82,6 +85,28 @@ class _LiveMonitorScreenState extends State<LiveMonitorScreen> {
         Text(text, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),
       ],
     );
+  }
+
+  List<DriverPassenger> _buildRosterForTrip(TripTelemetry trip) {
+    final baseRoster = DriverPassenger.getInitialRoster();
+    final total = trip.totalStudents > 0 ? trip.totalStudents : baseRoster.length;
+    final boarded = trip.onboardStudents.clamp(0, total);
+    return List<DriverPassenger>.generate(total, (index) {
+      final template = baseRoster[index % baseRoster.length];
+      final status = index < boarded
+          ? PassengerBoardingStatus.boarded
+          : (index == total - 1 && total - boarded >= 2
+              ? PassengerBoardingStatus.absent
+              : PassengerBoardingStatus.pending);
+      return DriverPassenger(
+        id: '${trip.tripId}_stu_${index + 1}',
+        name: index < baseRoster.length ? template.name : '${template.name} (${index + 1})',
+        grade: template.grade,
+        stopAddress: template.stopAddress,
+        scheduledTime: template.scheduledTime,
+        status: status,
+      );
+    });
   }
 
   @override
@@ -188,6 +213,49 @@ class _LiveMonitorScreenState extends State<LiveMonitorScreen> {
                           ),
                         ],
                       ),
+                    ),
+
+                    // Live critical/incident banner from SafetyAlert feed (US-21 / US-29)
+                    ValueListenableBuilder<List<SafetyAlert>>(
+                      valueListenable: SafetyAlert.sharedAlertsNotifier,
+                      builder: (context, alerts, _) {
+                        final liveAlert = alerts.where((a) => a.type == 'PANIC' || a.id.startsWith('alt-1')).firstOrNull;
+                        if (liveAlert == null) return const SizedBox.shrink();
+                        final isPanic = liveAlert.type == 'PANIC';
+                        return Container(
+                          margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: isPanic ? AppTheme.errorContainer : Colors.orange.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isPanic ? AppTheme.errorColor : Colors.orange.shade300,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                isPanic ? Icons.warning_rounded : Icons.traffic,
+                                color: isPanic ? AppTheme.errorColor : Colors.orange.shade800,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  '${liveAlert.localizedTitle}: ${liveAlert.localizedMessage}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: isPanic ? AppTheme.errorColor : Colors.orange.shade900,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
 
                     // Active Trips List
@@ -327,6 +395,30 @@ class _LiveMonitorScreenState extends State<LiveMonitorScreen> {
                                                 ),
                                               ],
                                             ],
+                                          ),
+                                          const SizedBox(height: 10),
+                                          Align(
+                                            alignment: Alignment.centerRight,
+                                            child: OutlinedButton.icon(
+                                              style: OutlinedButton.styleFrom(
+                                                foregroundColor: AppTheme.primaryNavy,
+                                                side: const BorderSide(color: AppTheme.primaryNavy),
+                                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                                minimumSize: Size.zero,
+                                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                              ),
+                                              icon: const Icon(Icons.assignment_turned_in_outlined, size: 15),
+                                              label: Text(
+                                                AppStrings.tr('attendance_report_btn'),
+                                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                              ),
+                                              onPressed: () => showAttendanceReportDialog(
+                                                context,
+                                                routeName: trip.routeName,
+                                                passengers: _buildRosterForTrip(trip),
+                                              ),
+                                            ),
                                           ),
                                         ],
                                       ),

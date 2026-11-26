@@ -86,35 +86,20 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showForgotPasswordDialog() {
-    showDialog(
+    showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            const Icon(Icons.lock_reset, color: AppTheme.primaryNavy),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                AppStrings.tr('login_forgot_password_title'),
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-              ),
+      builder: (ctx) => _ForgotPasswordDialog(
+        initialEmail: _emailController.text.trim(),
+        onSubmitted: (email) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppStrings.trf('login_forgot_sent_msg', {'email': email})),
+              backgroundColor: const Color(0xFF10B981),
+              behavior: SnackBarBehavior.floating,
             ),
-          ],
-        ),
-        content: Text(
-          AppStrings.tr('login_forgot_password_msg'),
-          style: const TextStyle(fontSize: 14, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              AppStrings.tr('common_understood'),
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -668,6 +653,118 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ForgotPasswordDialog extends StatefulWidget {
+  final String initialEmail;
+  final ValueChanged<String> onSubmitted;
+
+  const _ForgotPasswordDialog({
+    required this.initialEmail,
+    required this.onSubmitted,
+  });
+
+  @override
+  State<_ForgotPasswordDialog> createState() => _ForgotPasswordDialogState();
+}
+
+class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _emailCtrl;
+
+  static final RegExp _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
+  @override
+  void initState() {
+    super.initState();
+    _emailCtrl = TextEditingController(text: widget.initialEmail);
+  }
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (!_formKey.currentState!.validate()) return;
+    final email = _emailCtrl.text.trim();
+    Navigator.pop(context);
+    widget.onSubmitted(email);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
+        children: [
+          const Icon(Icons.lock_reset, color: AppTheme.primaryNavy),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              AppStrings.tr('login_forgot_password_title'),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ),
+        ],
+      ),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              AppStrings.tr('login_forgot_password_msg'),
+              style: const TextStyle(fontSize: 13, height: 1.4, color: Colors.black87),
+            ),
+            const SizedBox(height: 14),
+            TextFormField(
+              controller: _emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: AppStrings.tr('login_email_label'),
+                hintText: AppStrings.tr('login_email_hint'),
+                prefixIcon: const Icon(Icons.email_outlined),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              validator: (value) {
+                final trimmed = value?.trim() ?? '';
+                if (trimmed.isEmpty) {
+                  return AppStrings.tr('login_email_required');
+                }
+                if (!_emailRegex.hasMatch(trimmed)) {
+                  return AppStrings.tr('login_email_invalid');
+                }
+                return null;
+              },
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(AppStrings.tr('common_cancel')),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.primaryNavy,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(0, 40),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          onPressed: _submit,
+          child: Text(
+            AppStrings.tr('login_forgot_send_btn'),
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+      ],
     );
   }
 }

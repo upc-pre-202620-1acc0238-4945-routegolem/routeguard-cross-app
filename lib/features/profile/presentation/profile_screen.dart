@@ -383,16 +383,22 @@ class ProfileScreen extends StatelessWidget {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Row(
-                                  children: [
-                                    const Icon(Icons.shield_outlined, color: AppTheme.primaryNavy, size: 20),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      AppStrings.tr('profile_caregivers_title'),
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                    ),
-                                  ],
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.shield_outlined, color: AppTheme.primaryNavy, size: 20),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          AppStrings.tr('profile_caregivers_title'),
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
+                                const SizedBox(width: 8),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(
@@ -546,6 +552,153 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
 
+                  // Help & Support Card (US-18 FAQ & US-23 Support Ticket)
+                  Card(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 1.5,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(Icons.support_agent, color: Color(0xFF047857)),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      AppStrings.tr('support_card_title'),
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                    ),
+                                    Text(
+                                      AppStrings.tr('support_card_subtitle'),
+                                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppTheme.primaryNavy,
+                                    side: const BorderSide(color: AppTheme.primaryNavy),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                  ),
+                                  icon: const Icon(Icons.quiz_outlined, size: 16),
+                                  label: Text(
+                                    AppStrings.tr('support_faq_btn'),
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  onPressed: () => _showFaqDialog(context),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppTheme.primaryNavy,
+                                    foregroundColor: Colors.white,
+                                    minimumSize: const Size(0, 42),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                                  ),
+                                  icon: const Icon(Icons.confirmation_number_outlined, size: 16),
+                                  label: Text(
+                                    AppStrings.tr('support_ticket_btn'),
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  onPressed: () => _showSupportTicketDialog(context),
+                                ),
+                              ),
+                            ],
+                          ),
+                          ValueListenableBuilder<List<SupportTicketEntry>>(
+                            valueListenable: SessionManager.supportTicketsNotifier,
+                            builder: (context, tickets, _) {
+                              if (tickets.isEmpty) return const SizedBox.shrink();
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      AppStrings.tr('support_recent_tickets_label'),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.grey.shade700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    ...tickets.take(3).map(
+                                          (t) => Padding(
+                                            padding: const EdgeInsets.only(bottom: 4),
+                                            child: Row(
+                                              children: [
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                                                    borderRadius: BorderRadius.circular(6),
+                                                  ),
+                                                  child: Text(
+                                                    t.ticketId,
+                                                    style: const TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Color(0xFF047857),
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    '${AppStrings.tr(t.categoryKey)} · ${t.subject}',
+                                                    style: const TextStyle(fontSize: 12),
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  AppStrings.tr('support_ticket_status_submitted'),
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.grey.shade600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
                   // Language Switcher Card (i18n)
                   Card(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -555,35 +708,41 @@ class ProfileScreen extends StatelessWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryTeal.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(10),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryTeal.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Icon(Icons.language, color: AppTheme.primaryTeal),
                                 ),
-                                child: const Icon(Icons.language, color: AppTheme.primaryTeal),
-                              ),
-                              const SizedBox(width: 12),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    AppStrings.tr('language_card_title'),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        AppStrings.tr('language_card_title'),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      Text(
+                                        currentLang == AppLanguage.spanish ? 'Español (ES)' : 'English (EN)',
+                                        style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                                      ),
+                                    ],
                                   ),
-                                  Text(
-                                    currentLang == AppLanguage.spanish ? 'Español (ES)' : 'English (EN)',
-                                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                                  ),
-                                ],
-                              ),
-                            ],
+                                ),
+                              ],
+                            ),
                           ),
+                          const SizedBox(width: 8),
                           SegmentedButton<AppLanguage>(
                             segments: const [
                               ButtonSegment<AppLanguage>(
@@ -786,6 +945,215 @@ class ProfileScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showFaqDialog(BuildContext context) {
+    final faqPairs = const [
+      ('support_faq_q1', 'support_faq_a1'),
+      ('support_faq_q2', 'support_faq_a2'),
+      ('support_faq_q3', 'support_faq_a3'),
+      ('support_faq_q4', 'support_faq_a4'),
+      ('support_faq_q5', 'support_faq_a5'),
+    ];
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.quiz_outlined, color: AppTheme.primaryNavy),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                AppStrings.tr('support_faq_title'),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppTheme.primaryNavy),
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: faqPairs.map((pair) {
+                return ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: const EdgeInsets.only(bottom: 10),
+                  title: Text(
+                    AppStrings.tr(pair.$1),
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        AppStrings.tr(pair.$2),
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade700, height: 1.4),
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(AppStrings.tr('common_close')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSupportTicketDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => _SupportTicketDialog(
+        sessionManager: sessionManager,
+        onCreated: (entry) {
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppStrings.trf('support_ticket_created_snack', {'id': entry.ticketId})),
+              backgroundColor: const Color(0xFF10B981),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SupportTicketDialog extends StatefulWidget {
+  final SessionManager sessionManager;
+  final ValueChanged<SupportTicketEntry> onCreated;
+
+  const _SupportTicketDialog({
+    required this.sessionManager,
+    required this.onCreated,
+  });
+
+  @override
+  State<_SupportTicketDialog> createState() => _SupportTicketDialogState();
+}
+
+class _SupportTicketDialogState extends State<_SupportTicketDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _subjectCtrl = TextEditingController();
+  final _messageCtrl = TextEditingController();
+  String _selectedCategory = 'support_cat_gps';
+
+  @override
+  void dispose() {
+    _subjectCtrl.dispose();
+    _messageCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    final entry = await widget.sessionManager.addSupportTicket(
+      categoryKey: _selectedCategory,
+      subject: _subjectCtrl.text.trim(),
+      message: _messageCtrl.text.trim(),
+    );
+    if (mounted) {
+      Navigator.pop(context);
+      widget.onCreated(entry);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const categories = [
+      'support_cat_gps',
+      'support_cat_route',
+      'support_cat_billing',
+      'support_cat_account',
+    ];
+
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
+        children: [
+          const Icon(Icons.confirmation_number_outlined, color: AppTheme.primaryNavy),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              AppStrings.tr('support_ticket_title'),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppTheme.primaryNavy),
+            ),
+          ),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                initialValue: _selectedCategory,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: AppStrings.tr('support_ticket_category_label'),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                items: categories
+                    .map((key) => DropdownMenuItem(value: key, child: Text(AppStrings.tr(key))))
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) setState(() => _selectedCategory = val);
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _subjectCtrl,
+                decoration: InputDecoration(
+                  labelText: AppStrings.tr('support_ticket_subject_label'),
+                  hintText: AppStrings.tr('support_ticket_subject_hint'),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                validator: (val) =>
+                    (val == null || val.trim().isEmpty) ? AppStrings.tr('common_required_field') : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _messageCtrl,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  labelText: AppStrings.tr('support_ticket_message_label'),
+                  hintText: AppStrings.tr('support_ticket_message_hint'),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                validator: (val) =>
+                    (val == null || val.trim().isEmpty) ? AppStrings.tr('common_required_field') : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(AppStrings.tr('common_cancel')),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.primaryNavy,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(0, 40),
+          ),
+          onPressed: _submit,
+          child: Text(AppStrings.tr('support_ticket_submit_btn')),
+        ),
+      ],
     );
   }
 }

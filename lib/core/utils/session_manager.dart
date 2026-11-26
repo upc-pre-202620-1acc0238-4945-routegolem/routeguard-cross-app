@@ -1,6 +1,39 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../localization/app_strings.dart';
+
+class SupportTicketEntry {
+  final String ticketId;
+  final String categoryKey;
+  final String subject;
+  final String message;
+  final String createdAt;
+
+  const SupportTicketEntry({
+    required this.ticketId,
+    required this.categoryKey,
+    required this.subject,
+    required this.message,
+    required this.createdAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'ticketId': ticketId,
+        'categoryKey': categoryKey,
+        'subject': subject,
+        'message': message,
+        'createdAt': createdAt,
+      };
+
+  factory SupportTicketEntry.fromJson(Map<String, dynamic> json) => SupportTicketEntry(
+        ticketId: json['ticketId']?.toString() ?? '#RG-0000',
+        categoryKey: json['categoryKey']?.toString() ?? 'support_cat_gps',
+        subject: json['subject']?.toString() ?? '',
+        message: json['message']?.toString() ?? '',
+        createdAt: json['createdAt']?.toString() ?? '',
+      );
+}
 
 class SessionManager {
   static const String _keyToken = 'auth_token';
@@ -12,19 +45,59 @@ class SessionManager {
   static const String _keySeenTutorialPrefix = 'seen_tutorial_';
   static const String _keyAvatarPath = 'avatar_path';
   static const String _keyLanguage = 'app_language';
+  static const String _keySupportTickets = 'support_tickets';
 
   static final ValueNotifier<String> activeRoleNotifier = ValueNotifier<String>('PARENT');
   static final ValueNotifier<String?> avatarPathNotifier = ValueNotifier<String?>(null);
+  static final ValueNotifier<List<SupportTicketEntry>> supportTicketsNotifier =
+      ValueNotifier<List<SupportTicketEntry>>([]);
 
   final SharedPreferences _prefs;
 
   SessionManager(this._prefs) {
     activeRoleNotifier.value = normalizeRole(_prefs.getString(_keyRole) ?? 'PARENT');
     avatarPathNotifier.value = _prefs.getString(_keyAvatarPath);
+    supportTicketsNotifier.value = _loadSupportTickets();
     final savedLang = _prefs.getString(_keyLanguage);
     if (savedLang != null && savedLang.isNotEmpty) {
       AppStrings.setLanguageCode(savedLang);
     }
+  }
+
+  List<SupportTicketEntry> _loadSupportTickets() {
+    final raw = _prefs.getString(_keySupportTickets);
+    if (raw == null || raw.isEmpty) return [];
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return decoded
+          .whereType<Map<String, dynamic>>()
+          .map(SupportTicketEntry.fromJson)
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<SupportTicketEntry> addSupportTicket({
+    required String categoryKey,
+    required String subject,
+    required String message,
+  }) async {
+    final code = 1000 + (DateTime.now().millisecondsSinceEpoch % 9000);
+    final entry = SupportTicketEntry(
+      ticketId: '#RG-$code',
+      categoryKey: categoryKey,
+      subject: subject,
+      message: message,
+      createdAt: DateTime.now().toIso8601String(),
+    );
+    final updated = [entry, ...supportTicketsNotifier.value];
+    supportTicketsNotifier.value = updated;
+    await _prefs.setString(
+      _keySupportTickets,
+      jsonEncode(updated.map((e) => e.toJson()).toList()),
+    );
+    return entry;
   }
 
   static Future<SessionManager> create() async {

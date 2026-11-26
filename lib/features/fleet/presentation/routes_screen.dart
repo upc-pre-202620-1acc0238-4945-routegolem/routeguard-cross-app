@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../core/localization/app_strings.dart';
+import '../../../core/network/platform_features_repository.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/session_manager.dart';
+import '../../../core/widgets/platform_feature_dialogs.dart';
 import '../data/fleet_repository.dart';
 import '../models/route_model.dart';
 import 'route_detail_screen.dart';
@@ -16,10 +19,12 @@ class RoutesScreen extends StatefulWidget {
 
 class _RoutesScreenState extends State<RoutesScreen> {
   late final FleetRepository _repository;
+  final PlatformFeaturesRepository _platformRepo = PlatformFeaturesRepository();
   final _newRouteController = TextEditingController();
   final _searchController = TextEditingController();
   String _searchQuery = '';
   bool _isSearching = false;
+  String _token = '';
 
   List<RouteModel> _routes = [];
   bool _isLoading = true;
@@ -29,6 +34,9 @@ class _RoutesScreenState extends State<RoutesScreen> {
   void initState() {
     super.initState();
     _repository = widget.repository ?? FleetRepository();
+    SessionManager.create().then((s) {
+      if (mounted) setState(() => _token = s.token ?? '');
+    }).catchError((_) {});
     _loadRoutes();
   }
 
@@ -87,6 +95,37 @@ class _RoutesScreenState extends State<RoutesScreen> {
           appBar: AppBar(
             title: Text(AppStrings.tr('routes_title')),
             actions: [
+              IconButton(
+                icon: const Icon(Icons.build_outlined),
+                tooltip: AppStrings.tr('maintenances_btn'),
+                onPressed: () => PlatformFeatureDialogs.showMaintenanceDialog(
+                  context,
+                  repo: _platformRepo,
+                  token: _token,
+                  canAdd: true,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.receipt_long_outlined),
+                tooltip: AppStrings.tr('expenses_btn'),
+                onPressed: () => PlatformFeatureDialogs.showExpensesDialog(
+                  context,
+                  repo: _platformRepo,
+                  token: _token,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.alt_route_outlined),
+                tooltip: AppStrings.tr('pickup_opt_btn'),
+                onPressed: () => PlatformFeatureDialogs.showPickupAndOptimizationDialog(
+                  context,
+                  repo: _platformRepo,
+                  token: _token,
+                  canRequestChange: false,
+                  canApproveChanges: true,
+                  routeId: _routes.isNotEmpty ? _routes.first.id : 'f0000000-0000-0000-0000-000000000001',
+                ),
+              ),
               IconButton(
                 icon: Icon(_isSearching ? Icons.close : Icons.search),
                 tooltip: AppStrings.tr('routes_search_tooltip'),

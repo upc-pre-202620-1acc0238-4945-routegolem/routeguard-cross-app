@@ -7,6 +7,8 @@ class UserAccount {
   final String role;
   final String token;
   final String organizationId;
+  final String? photoData;
+  final String? preferredLanguage;
 
   UserAccount({
     required this.id,
@@ -15,6 +17,8 @@ class UserAccount {
     required this.role,
     required this.token,
     required this.organizationId,
+    this.photoData,
+    this.preferredLanguage,
   });
 
   factory UserAccount.fromJson(Map<String, dynamic> json) {
@@ -33,6 +37,8 @@ class UserAccount {
       role: SessionManager.normalizeRole(rawRole),
       token: json['token'] ?? json['Token'] ?? '',
       organizationId: (json['organizationId'] ?? json['OrganizationId'])?.toString() ?? 'org_school_01',
+      photoData: (json['photoData'] ?? json['PhotoData'])?.toString(),
+      preferredLanguage: (json['preferredLanguage'] ?? json['PreferredLanguage'])?.toString(),
     );
   }
 
@@ -45,6 +51,8 @@ class UserAccount {
       'roleTier': role,
       'token': token,
       'organizationId': organizationId,
+      if (photoData != null) 'photoData': photoData,
+      if (preferredLanguage != null) 'preferredLanguage': preferredLanguage,
     };
   }
 }

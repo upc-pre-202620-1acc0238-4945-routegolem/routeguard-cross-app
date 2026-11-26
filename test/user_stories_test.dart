@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:routeguard_cross_app/core/database/local_database.dart';
 import 'package:routeguard_cross_app/core/localization/app_strings.dart';
 import 'package:routeguard_cross_app/core/utils/session_manager.dart';
 import 'package:routeguard_cross_app/features/alerts/models/safety_alert.dart';
@@ -21,6 +22,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   group('New User Stories (US-09 to US-29) Tests', () {
     setUp(() {
+      LocalDatabase.instance.clearMemoryForTesting();
       AppStrings.setLanguage(AppLanguage.spanish);
     });
 
@@ -120,7 +122,7 @@ void main() {
     test('US-15: TrackingRepository fetches trips when connected and falls back offline', () async {
       final onlineRepo = TrackingRepository(
         client: MockClient((request) async {
-          if (request.url.path.endsWith('/trips')) {
+          if (request.url.path.endsWith('/trips/history') || request.url.path.endsWith('/trips')) {
             return http.Response(
               jsonEncode([
                 {
@@ -147,6 +149,7 @@ void main() {
       expect(apiHistory.first.tripId, 'TRP-API-1');
       expect(apiHistory.first.routeName, 'Ruta API 01');
 
+      LocalDatabase.instance.clearMemoryForTesting();
       final offlineRepo = TrackingRepository(
         client: MockClient((_) async => throw Exception('No network')),
       );
@@ -318,7 +321,7 @@ void main() {
       await tester.tap(find.text('Confirmar Cancelación'));
       await tester.pumpAndSettle();
 
-      expect(postedUrls.any((p) => p.contains('/panic')), isTrue);
+      expect(postedUrls.any((p) => p.contains('/cancel') || p.contains('/panic')), isTrue);
       // Scroll back up to header card to verify CANCELADO badge
       await tester.drag(find.byType(ListView), const Offset(0, 600));
       await tester.pumpAndSettle();

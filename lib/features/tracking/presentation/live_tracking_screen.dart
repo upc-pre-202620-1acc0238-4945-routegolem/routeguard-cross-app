@@ -3,8 +3,10 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/localization/app_strings.dart';
+import '../../../core/network/platform_features_repository.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/session_manager.dart';
+import '../../../core/widgets/platform_feature_dialogs.dart';
 import '../../../core/widgets/trip_history_sheet.dart';
 import '../../../core/widgets/vehicle_docs_dialog.dart';
 import '../../alerts/models/safety_alert.dart';
@@ -28,6 +30,7 @@ class LiveTrackingScreen extends StatefulWidget {
 
 class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   late final TrackingRepository _repository;
+  final PlatformFeaturesRepository _platformRepo = PlatformFeaturesRepository();
   final _mapController = MapController();
 
   TripTelemetry? _telemetry;
@@ -104,12 +107,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
             _buildVehicleDetailRow(
               Icons.directions_bus,
               AppStrings.tr('tracking_vehicle_unit_label'),
-              AppStrings.tr('tracking_vehicle_unit_val'),
+              _telemetry?.vehicleModel ?? AppStrings.tr('tracking_vehicle_unit_val'),
             ),
             _buildVehicleDetailRow(
               Icons.confirmation_number_outlined,
               AppStrings.tr('tracking_vehicle_plate_label'),
-              _telemetry?.vehiclePlate ?? 'ABC-789',
+              _telemetry?.vehiclePlate ?? 'ABC-123',
             ),
             _buildVehicleDetailRow(
               Icons.palette_outlined,
@@ -119,17 +122,19 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
             _buildVehicleDetailRow(
               Icons.badge_outlined,
               AppStrings.tr('tracking_vehicle_driver_label'),
-              '${_telemetry?.driverName ?? "Carlos Ramírez"} · Lic. A-IIIa (Q-12345678)',
+              '${_telemetry?.driverName ?? "Carlos Ramirez"} · Lic. ${_telemetry?.driverLicenseCategory ?? "A-IIIa"} (${_telemetry?.driverLicense ?? "Q-44556677"})',
             ),
             _buildVehicleDetailRow(
               Icons.security,
               AppStrings.tr('tracking_vehicle_soat_label'),
-              AppStrings.tr('tracking_vehicle_soat_val'),
+              (_telemetry?.soatPolicy != null && _telemetry!.soatPolicy!.isNotEmpty)
+                  ? '${_telemetry?.soatInsurer ?? "Rímac Seguros"} · ${_telemetry!.soatPolicy} (${_formatExpiry(_telemetry?.soatExpiresAt)})'
+                  : AppStrings.tr('tracking_vehicle_soat_val'),
             ),
             _buildVehicleDetailRow(
               Icons.phone_android,
               AppStrings.tr('tracking_vehicle_phone_label'),
-              '+51 987 654 321',
+              _telemetry?.driverPhone ?? '+51 987 654 321',
             ),
             const SizedBox(height: 12),
             Row(
@@ -297,12 +302,26 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     );
   }
 
+  String _formatExpiry(String? raw) {
+    if (raw == null || raw.isEmpty) return '12/2026';
+    if (RegExp(r'^\d{4}-\d{2}-\d{2}').hasMatch(raw)) {
+      return '${raw.substring(5, 7)}/${raw.substring(0, 4)}';
+    }
+    if (RegExp(r'^\d{2}/\d{2}/\d{4}$').hasMatch(raw)) {
+      return '${raw.substring(3, 5)}/${raw.substring(6, 10)}';
+    }
+    return raw;
+  }
+
   void _openVehicleDocsDialog() {
     showVehicleDocsDialog(
       context,
-      driverName: _telemetry?.driverName ?? 'Carlos Ramírez',
-      vehiclePlate: _telemetry?.vehiclePlate ?? 'ABC-789',
-      licenseNumber: 'Q-12345678',
+      driverName: _telemetry?.driverName ?? 'Carlos Ramirez',
+      vehiclePlate: _telemetry?.vehiclePlate ?? 'ABC-123',
+      licenseNumber: _telemetry?.driverLicense ?? 'Q-44556677',
+      licenseCategory: _telemetry?.driverLicenseCategory ?? 'A-IIIa',
+      soatPolicy: _telemetry?.soatPolicy ?? 'SOAT-2026-88412',
+      soatExpiry: _formatExpiry(_telemetry?.soatExpiresAt),
     );
   }
 
@@ -321,7 +340,14 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   }
 
   Future<void> _showReportAbsenceDialog() async {
-    final childOptions = ['Mateo Gómez', 'Sofía Gómez'];
+    final derivedChildren = _stops
+        .map((s) => s.studentName.replaceAll(' (Hijo)', '').trim())
+        .where((name) =>
+            name.isNotEmpty &&
+            !name.toLowerCase().contains('colegio') &&
+            !name.toLowerCase().contains('destino'))
+        .toList();
+    final childOptions = derivedChildren.isNotEmpty ? derivedChildren : ['Mateo Nery', 'Luciana Nery'];
     String selectedChild = childOptions.first;
     String selectedReasonKey = 'absence_reason_medical';
     final notesCtrl = TextEditingController();
@@ -843,12 +869,12 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            _telemetry?.driverName ?? 'Carlos Ramírez',
+                                            _telemetry?.driverName ?? 'Carlos Ramirez',
                                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                                           ),
                                           Text(
                                             AppStrings.trf('tracking_plate_prefix', {
-                                              'plate': _telemetry?.vehiclePlate ?? 'ABC-789',
+                                              'plate': _telemetry?.vehiclePlate ?? 'ABC-123',
                                             }),
                                             style: const TextStyle(fontSize: 12, color: Colors.black54),
                                           ),
@@ -884,7 +910,10 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                                           borderRadius: BorderRadius.circular(8),
                                         ),
                                         child: Text(
-                                          AppStrings.trf('docs_summary_chip', {'date': '12/2026', 'cat': 'A-IIIa'}),
+                                          AppStrings.trf('docs_summary_chip', {
+                                            'date': _formatExpiry(_telemetry?.soatExpiresAt),
+                                            'cat': _telemetry?.driverLicenseCategory ?? 'A-IIIa',
+                                          }),
                                           style: const TextStyle(
                                             fontSize: 11,
                                             fontWeight: FontWeight.w600,
@@ -979,6 +1008,53 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                                         style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                                       ),
                                       onPressed: _showRateServiceDialog,
+                                    ),
+                                    ActionChip(
+                                      avatar: const Icon(Icons.campaign_outlined, size: 15, color: AppTheme.primaryNavy),
+                                      label: Text(
+                                        AppStrings.tr('announcements_btn'),
+                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                      ),
+                                      onPressed: () => PlatformFeatureDialogs.showAnnouncementsDialog(
+                                        context,
+                                        repo: _platformRepo,
+                                        token: widget.sessionManager.token ?? '',
+                                        canPublish: false,
+                                      ),
+                                    ),
+                                    ActionChip(
+                                      avatar: const Icon(Icons.edit_location_alt_outlined, size: 15, color: AppTheme.primaryNavy),
+                                      label: Text(
+                                        AppStrings.tr('pickup_opt_btn'),
+                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                      ),
+                                      onPressed: () => PlatformFeatureDialogs.showPickupAndOptimizationDialog(
+                                        context,
+                                        repo: _platformRepo,
+                                        token: widget.sessionManager.token ?? '',
+                                        canRequestChange: true,
+                                        canApproveChanges: false,
+                                        defaultChild: _stops
+                                                .map((s) => s.studentName.replaceAll(' (Hijo)', '').trim())
+                                                .where((n) => n.isNotEmpty && !n.toLowerCase().contains('colegio'))
+                                                .firstOrNull ??
+                                            'Mateo Nery',
+                                      ),
+                                    ),
+                                    ActionChip(
+                                      avatar: const Icon(Icons.chat_bubble_outline, size: 15, color: AppTheme.primaryNavy),
+                                      label: Text(
+                                        AppStrings.tr('chat_btn'),
+                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                      ),
+                                      onPressed: () => PlatformFeatureDialogs.showChatDialog(
+                                        context,
+                                        repo: _platformRepo,
+                                        token: widget.sessionManager.token ?? '',
+                                        userId: widget.sessionManager.userId ?? '',
+                                        userName: widget.sessionManager.fullName,
+                                        userRole: widget.sessionManager.role,
+                                      ),
                                     ),
                                   ],
                                 ),

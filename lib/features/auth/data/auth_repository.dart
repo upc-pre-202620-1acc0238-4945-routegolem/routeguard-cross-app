@@ -35,7 +35,7 @@ class AuthRepository {
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'Accept-Language': 'es',
+            'Accept-Language': AppStrings.languageCode,
           },
           body: jsonEncode({
             'email': cleanEmail,

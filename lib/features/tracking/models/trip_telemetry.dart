@@ -11,6 +11,13 @@ class TripTelemetry {
   final int onboardStudents;
   final String? nextStopName;
   final int? etaNextStopMinutes;
+  final String? vehicleModel;
+  final String? driverPhone;
+  final String? driverLicense;
+  final String? driverLicenseCategory;
+  final String? soatPolicy;
+  final String? soatInsurer;
+  final String? soatExpiresAt;
 
   TripTelemetry({
     required this.tripId,
@@ -25,6 +32,13 @@ class TripTelemetry {
     required this.onboardStudents,
     this.nextStopName,
     this.etaNextStopMinutes,
+    this.vehicleModel,
+    this.driverPhone,
+    this.driverLicense,
+    this.driverLicenseCategory,
+    this.soatPolicy,
+    this.soatInsurer,
+    this.soatExpiresAt,
   });
 
   factory TripTelemetry.fromJson(Map<String, dynamic> json) {
@@ -41,9 +55,9 @@ class TripTelemetry {
 
     return TripTelemetry(
       tripId: (json['tripId'] ?? json['TripId'])?.toString() ?? 'TRP-101',
-      routeName: json['routeName'] ?? json['RouteName'] ?? 'Ruta Escolar Norte A-1',
-      driverName: json['driverName'] ?? json['DriverName'] ?? 'Luis Johnny (Conductor Oficial)',
-      vehiclePlate: json['vehiclePlate'] ?? json['VehiclePlate'] ?? 'ABC-789',
+      routeName: json['routeName'] ?? json['RouteName'] ?? 'Ruta San Martín - Turno Mañana',
+      driverName: json['driverName'] ?? json['DriverName'] ?? 'Carlos Ramirez',
+      vehiclePlate: json['vehiclePlate'] ?? json['VehiclePlate'] ?? 'ABC-123',
       currentLatitude: lat ?? -12.0872,
       currentLongitude: lng ?? -77.0350,
       speedKmh: speed ?? 32.5,
@@ -52,6 +66,13 @@ class TripTelemetry {
       onboardStudents: json['onboardStudents'] ?? json['boardedCount'] ?? json['BoardedCount'] ?? 5,
       nextStopName: json['nextStopName'],
       etaNextStopMinutes: json['etaNextStopMinutes'],
+      vehicleModel: json['vehicleModel']?.toString(),
+      driverPhone: json['driverPhone']?.toString(),
+      driverLicense: json['driverLicense']?.toString(),
+      driverLicenseCategory: json['driverLicenseCategory']?.toString(),
+      soatPolicy: json['soatPolicy']?.toString(),
+      soatInsurer: json['soatInsurer']?.toString(),
+      soatExpiresAt: json['soatExpiresAt']?.toString(),
     );
   }
 

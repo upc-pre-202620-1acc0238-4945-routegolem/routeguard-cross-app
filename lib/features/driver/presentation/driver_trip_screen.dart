@@ -3,8 +3,11 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/localization/app_strings.dart';
+import '../../../core/network/platform_features_repository.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/session_manager.dart';
 import '../../../core/widgets/attendance_report_dialog.dart';
+import '../../../core/widgets/platform_feature_dialogs.dart';
 import '../../../core/widgets/trip_history_sheet.dart';
 import '../../../core/widgets/vehicle_docs_dialog.dart';
 import '../../alerts/models/safety_alert.dart';
@@ -26,7 +29,10 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
   static const String _activeTripId = 'TRP-2026-08';
 
   late final TrackingRepository _repository;
+  final PlatformFeaturesRepository _platformRepo = PlatformFeaturesRepository();
   final List<DriverPassenger> _passengers = DriverPassenger.getInitialRoster();
+  SessionManager? _session;
+  Map<String, Object?>? _vehicleDocs;
   DriverTripState _tripState = DriverTripState.inProgress;
   String? _cancelReasonKey;
   String? _activeIncidentTypeKey;
@@ -38,6 +44,28 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
   void initState() {
     super.initState();
     _repository = widget.repository ?? TrackingRepository();
+    _loadSessionAndDocs();
+  }
+
+  Future<void> _loadSessionAndDocs() async {
+    try {
+      final session = await SessionManager.create();
+      final docs = await _platformRepo.loadPrimaryVehicleDocs(session.token ?? '');
+      if (mounted) {
+        setState(() {
+          _session = session;
+          _vehicleDocs = docs;
+        });
+      }
+    } catch (_) {}
+  }
+
+  String _formatExpiryMmYyyy(String? raw) {
+    if (raw == null || raw.isEmpty) return '12/2026';
+    if (RegExp(r'^\d{4}-\d{2}-\d{2}').hasMatch(raw)) {
+      return '${raw.substring(5, 7)}/${raw.substring(0, 4)}';
+    }
+    return raw;
   }
 
   int get _boardedCount =>
@@ -608,7 +636,10 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              AppStrings.trf('docs_summary_chip', {'date': '12/2026', 'cat': 'A-IIIa'}),
+                              AppStrings.trf('docs_summary_chip', {
+                                'date': _formatExpiryMmYyyy(_vehicleDocs?['soat_expires_at']?.toString()),
+                                'cat': 'A-IIIa',
+                              }),
                               style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -630,9 +661,11 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                             ),
                             onPressed: () => showVehicleDocsDialog(
                               context,
-                              driverName: 'Carlos Ramírez',
-                              vehiclePlate: 'ABC-789',
-                              licenseNumber: 'Q-12345678',
+                              driverName: _session?.fullName ?? 'Carlos Ramirez',
+                              vehiclePlate: _vehicleDocs?['plate']?.toString() ?? 'ABC-123',
+                              licenseNumber: 'Q-44556677',
+                              soatPolicy: _vehicleDocs?['soat_policy']?.toString() ?? 'SOAT-2026-88412',
+                              soatExpiry: _formatExpiryMmYyyy(_vehicleDocs?['soat_expires_at']?.toString()),
                             ),
                           ),
                         ],
@@ -1057,6 +1090,89 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
               const SizedBox(height: 8),
 
               ..._passengers.map((passenger) => _buildPassengerCard(passenger)),
+              const SizedBox(height: 14),
+              Card(
+                elevation: 1.5,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        AppStrings.tr('driver_tools_label'),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primaryNavy),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          ActionChip(
+                            visualDensity: VisualDensity.compact,
+                            avatar: const Icon(Icons.campaign_outlined, size: 15, color: AppTheme.primaryNavy),
+                            label: Text(AppStrings.tr('announcements_btn'), style: const TextStyle(fontSize: 11)),
+                            onPressed: () => PlatformFeatureDialogs.showAnnouncementsDialog(
+                              context,
+                              repo: _platformRepo,
+                              token: _session?.token ?? '',
+                              canPublish: true,
+                            ),
+                          ),
+                          ActionChip(
+                            visualDensity: VisualDensity.compact,
+                            avatar: const Icon(Icons.alt_route_outlined, size: 15, color: AppTheme.primaryNavy),
+                            label: Text(AppStrings.tr('pickup_opt_btn'), style: const TextStyle(fontSize: 11)),
+                            onPressed: () => PlatformFeatureDialogs.showPickupAndOptimizationDialog(
+                              context,
+                              repo: _platformRepo,
+                              token: _session?.token ?? '',
+                              canRequestChange: false,
+                              canApproveChanges: true,
+                            ),
+                          ),
+                          ActionChip(
+                            visualDensity: VisualDensity.compact,
+                            avatar: const Icon(Icons.chat_bubble_outline, size: 15, color: AppTheme.primaryNavy),
+                            label: Text(AppStrings.tr('chat_btn'), style: const TextStyle(fontSize: 11)),
+                            onPressed: () => PlatformFeatureDialogs.showChatDialog(
+                              context,
+                              repo: _platformRepo,
+                              token: _session?.token ?? '',
+                              userId: _session?.userId ?? 'driver',
+                              userName: _session?.fullName ?? 'Carlos Ramirez',
+                              userRole: 'DRIVER',
+                            ),
+                          ),
+                          ActionChip(
+                            visualDensity: VisualDensity.compact,
+                            avatar: const Icon(Icons.build_outlined, size: 15, color: AppTheme.primaryNavy),
+                            label: Text(AppStrings.tr('maintenances_btn'), style: const TextStyle(fontSize: 11)),
+                            onPressed: () => PlatformFeatureDialogs.showMaintenanceDialog(
+                              context,
+                              repo: _platformRepo,
+                              token: _session?.token ?? '',
+                              canAdd: true,
+                              defaultPlate: _vehicleDocs?['plate']?.toString() ?? 'ABC-123',
+                            ),
+                          ),
+                          ActionChip(
+                            visualDensity: VisualDensity.compact,
+                            avatar: const Icon(Icons.receipt_long_outlined, size: 15, color: AppTheme.primaryNavy),
+                            label: Text(AppStrings.tr('expenses_btn'), style: const TextStyle(fontSize: 11)),
+                            onPressed: () => PlatformFeatureDialogs.showExpensesDialog(
+                              context,
+                              repo: _platformRepo,
+                              token: _session?.token ?? '',
+                              defaultPlate: _vehicleDocs?['plate']?.toString() ?? 'ABC-123',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
             ],
           ),

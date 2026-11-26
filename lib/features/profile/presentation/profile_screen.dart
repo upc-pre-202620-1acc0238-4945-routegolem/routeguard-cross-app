@@ -1,12 +1,16 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/localization/app_strings.dart';
+import '../../../core/network/platform_features_repository.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/session_manager.dart';
 import '../../subscription/presentation/subscription_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   final SessionManager sessionManager;
   final VoidCallback onSignedOut;
   final VoidCallback? onLaunchTutorial;
@@ -17,6 +21,55 @@ class ProfileScreen extends StatelessWidget {
     required this.onSignedOut,
     this.onLaunchTutorial,
   });
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final PlatformFeaturesRepository _platformRepo = PlatformFeaturesRepository();
+  String? _photoData;
+  List<Map<String, Object?>> _caregivers = [];
+  String _unitSummary = 'Mercedes-Benz Sprinter 416 • ABC-123';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileData();
+  }
+
+  Future<void> _loadProfileData() async {
+    final token = widget.sessionManager.token ?? '';
+    final uid = widget.sessionManager.userId ?? 'default';
+    try {
+      final photo = await _platformRepo.loadMyPhoto(token, uid);
+      final docs = await _platformRepo.loadPrimaryVehicleDocs(token);
+      final isParent = widget.sessionManager.isParent;
+      final caregivers = isParent ? await _platformRepo.getCaregivers(token) : <Map<String, Object?>>[];
+      final tickets = await _platformRepo.getSupportTickets(token);
+      if (tickets.isNotEmpty) {
+        SessionManager.supportTicketsNotifier.value = tickets;
+      }
+      if (!mounted) return;
+      final model = docs['model']?.toString() ?? 'Mercedes-Benz Sprinter 416';
+      final plate = docs['plate']?.toString() ?? 'ABC-123';
+      setState(() {
+        _photoData = photo;
+        _caregivers = caregivers;
+        _unitSummary = '$model • $plate';
+      });
+    } catch (_) {}
+  }
+
+  Uint8List? _decodePhotoBytes(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final base64Str = raw.contains(',') ? raw.split(',').last : raw;
+      return base64Decode(base64Str);
+    } catch (_) {
+      return null;
+    }
+  }
 
   void _showAvatarPickerSheet(BuildContext context) {
     showModalBottomSheet(
@@ -70,7 +123,15 @@ class ProfileScreen extends StatelessWidget {
                         imageQuality: 85,
                       );
                       if (image != null) {
-                        await sessionManager.setAvatarPath(image.path);
+                        final bytes = await image.readAsBytes();
+                        final dataUri = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+                        await widget.sessionManager.setAvatarPath(image.path);
+                        if (mounted) setState(() => _photoData = dataUri);
+                        unawaited(_platformRepo.saveMyPhoto(
+                          widget.sessionManager.token ?? '',
+                          widget.sessionManager.userId ?? 'default',
+                          dataUri,
+                        ));
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
@@ -113,7 +174,15 @@ class ProfileScreen extends StatelessWidget {
                         imageQuality: 85,
                       );
                       if (image != null) {
-                        await sessionManager.setAvatarPath(image.path);
+                        final bytes = await image.readAsBytes();
+                        final dataUri = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+                        await widget.sessionManager.setAvatarPath(image.path);
+                        if (mounted) setState(() => _photoData = dataUri);
+                        unawaited(_platformRepo.saveMyPhoto(
+                          widget.sessionManager.token ?? '',
+                          widget.sessionManager.userId ?? 'default',
+                          dataUri,
+                        ));
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
@@ -134,7 +203,7 @@ class ProfileScreen extends StatelessWidget {
                     }
                   },
                 ),
-                if (sessionManager.avatarPath != null)
+                if (widget.sessionManager.avatarPath != null || _photoData != null)
                   ListTile(
                     leading: Container(
                       padding: const EdgeInsets.all(8),
@@ -150,7 +219,13 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     onTap: () async {
                       Navigator.pop(ctx);
-                      await sessionManager.setAvatarPath(null);
+                      if (mounted) setState(() => _photoData = null);
+                      await widget.sessionManager.setAvatarPath(null);
+                      unawaited(_platformRepo.saveMyPhoto(
+                        widget.sessionManager.token ?? '',
+                        widget.sessionManager.userId ?? 'default',
+                        null,
+                      ));
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text(AppStrings.tr('profile_avatar_removed'))),
@@ -193,8 +268,8 @@ class ProfileScreen extends StatelessWidget {
             ),
             onPressed: () async {
               Navigator.pop(ctx);
-              await sessionManager.clearSession();
-              onSignedOut();
+              await widget.sessionManager.clearSession();
+              widget.onSignedOut();
             },
             child: Text(AppStrings.tr('profile_sign_out')),
           ),
@@ -224,11 +299,11 @@ class ProfileScreen extends StatelessWidget {
                 ? Colors.orange
                 : AppTheme.primaryNavy;
 
-        final hasCustomName = sessionManager.fullName.isNotEmpty &&
-            sessionManager.fullName != AppStrings.tr('profile_default_user');
+        final hasCustomName = widget.sessionManager.fullName.isNotEmpty &&
+            widget.sessionManager.fullName != AppStrings.tr('profile_default_user');
 
         final displayName = hasCustomName
-            ? sessionManager.fullName
+            ? widget.sessionManager.fullName
             : (isAdmin
                 ? AppStrings.tr('profile_demo_admin_name')
                 : isDriver
@@ -262,7 +337,12 @@ class ProfileScreen extends StatelessWidget {
                           ValueListenableBuilder<String?>(
                             valueListenable: SessionManager.avatarPathNotifier,
                             builder: (context, avatarPath, _) {
-                              final hasValidImage = avatarPath != null && File(avatarPath).existsSync();
+                              final photoBytes = _decodePhotoBytes(_photoData);
+                              final hasFile = avatarPath != null && File(avatarPath).existsSync();
+                              final hasValidImage = photoBytes != null || hasFile;
+                              final ImageProvider? imageProvider = photoBytes != null
+                                  ? MemoryImage(photoBytes)
+                                  : (hasFile ? FileImage(File(avatarPath)) : null);
 
                               return GestureDetector(
                                 onTap: () => _showAvatarPickerSheet(context),
@@ -271,7 +351,7 @@ class ProfileScreen extends StatelessWidget {
                                     CircleAvatar(
                                       radius: 40,
                                       backgroundColor: roleColor.withValues(alpha: 0.12),
-                                      backgroundImage: hasValidImage ? FileImage(File(avatarPath)) : null,
+                                      backgroundImage: imageProvider,
                                       child: hasValidImage
                                           ? null
                                           : Text(
@@ -332,8 +412,8 @@ class ProfileScreen extends StatelessWidget {
                           _buildProfileRow(
                             Icons.email_outlined,
                             AppStrings.tr('profile_email'),
-                            sessionManager.email.isNotEmpty
-                                ? sessionManager.email
+                            widget.sessionManager.email.isNotEmpty
+                                ? widget.sessionManager.email
                                 : (isAdmin
                                     ? 'admin@routeguard.pe'
                                     : isDriver
@@ -344,7 +424,7 @@ class ProfileScreen extends StatelessWidget {
                           _buildProfileRow(
                             Icons.location_on_outlined,
                             AppStrings.tr('profile_institution'),
-                            'Colegio San Juan (${sessionManager.organizationId})',
+                            'Colegio San Juan (${widget.sessionManager.organizationId})',
                           ),
                           const SizedBox(height: 12),
                           _buildProfileRow(
@@ -361,8 +441,8 @@ class ProfileScreen extends StatelessWidget {
                             isAdmin
                                 ? 'Movilidades Escolares San Juan SAC'
                                 : isDriver
-                                    ? 'Mercedes-Benz Sprinter • ABC-789'
-                                    : 'Mateo Gómez (Primaria - 4to B)',
+                                    ? _unitSummary
+                                    : 'Mateo Nery · Luciana Nery',
                           ),
                         ],
                       ),
@@ -418,17 +498,23 @@ class ProfileScreen extends StatelessWidget {
                               style: const TextStyle(fontSize: 12, color: Colors.black54),
                             ),
                             const SizedBox(height: 10),
-                            _buildCaregiverTile(
-                              'Carmen López de Aljovín',
-                              AppStrings.tr('profile_caregiver_default_1_rel'),
-                              '987-123-456',
-                            ),
-                            const Divider(height: 12),
-                            _buildCaregiverTile(
-                              'Laura Gómez',
-                              AppStrings.tr('profile_caregiver_default_2_rel'),
-                              '999-888-777',
-                            ),
+                            if (_caregivers.isEmpty)
+                              Text(
+                                AppStrings.tr('profile_caregivers_empty'),
+                                style: const TextStyle(fontSize: 12, color: Colors.black54),
+                              )
+                            else
+                              ..._caregivers.map(
+                                (c) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: _buildCaregiverTile(
+                                    c['id']?.toString() ?? '',
+                                    c['full_name']?.toString() ?? '',
+                                    c['relationship']?.toString() ?? '',
+                                    c['phone_number']?.toString() ?? '',
+                                  ),
+                                ),
+                              ),
                             const SizedBox(height: 10),
                             OutlinedButton.icon(
                               style: OutlinedButton.styleFrom(
@@ -515,7 +601,7 @@ class ProfileScreen extends StatelessWidget {
                               ],
                               selected: {normalizedRole},
                               onSelectionChanged: (newSelection) async {
-                                await sessionManager.setRole(newSelection.first);
+                                await widget.sessionManager.setRole(newSelection.first);
                               },
                             ),
                           ),
@@ -547,7 +633,7 @@ class ProfileScreen extends StatelessWidget {
                         style: const TextStyle(fontSize: 12),
                       ),
                       trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-                      onTap: onLaunchTutorial,
+                      onTap: widget.onLaunchTutorial,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -756,7 +842,11 @@ class ProfileScreen extends StatelessWidget {
                             ],
                             selected: {currentLang},
                             onSelectionChanged: (newSelection) async {
-                              await sessionManager.setLanguage(newSelection.first);
+                              await widget.sessionManager.setLanguage(newSelection.first);
+                              unawaited(_platformRepo.syncLanguage(
+                                widget.sessionManager.token ?? '',
+                                AppStrings.languageCode,
+                              ));
                             },
                           ),
                         ],
@@ -859,7 +949,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCaregiverTile(String name, String relation, String phone) {
+  Widget _buildCaregiverTile(String id, String name, String relation, String phone) {
     return Row(
       children: [
         CircleAvatar(
@@ -877,7 +967,15 @@ class ProfileScreen extends StatelessWidget {
             ],
           ),
         ),
-        const Icon(Icons.verified, size: 16, color: Colors.green),
+        IconButton(
+          icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+          constraints: const BoxConstraints(),
+          padding: EdgeInsets.zero,
+          onPressed: () async {
+            await _platformRepo.deleteCaregiver(widget.sessionManager.token ?? '', id);
+            await _loadProfileData();
+          },
+        ),
       ],
     );
   }
@@ -930,16 +1028,27 @@ class ProfileScreen extends StatelessWidget {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryNavy, foregroundColor: Colors.white),
-            onPressed: () {
+            onPressed: () async {
+              final name = nameCtrl.text.trim();
+              if (name.isEmpty) return;
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    AppStrings.trf('profile_caregiver_added_msg', {'name': nameCtrl.text}),
-                  ),
-                  backgroundColor: Colors.green,
-                ),
+              await _platformRepo.addCaregiver(
+                widget.sessionManager.token ?? '',
+                name,
+                relationCtrl.text.trim(),
+                phoneCtrl.text.trim(),
               );
+              await _loadProfileData();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      AppStrings.trf('profile_caregiver_added_msg', {'name': name}),
+                    ),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
             },
             child: Text(AppStrings.tr('common_save')),
           ),
@@ -1014,7 +1123,8 @@ class ProfileScreen extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (ctx) => _SupportTicketDialog(
-        sessionManager: sessionManager,
+        sessionManager: widget.sessionManager,
+        platformRepo: _platformRepo,
         onCreated: (entry) {
           if (!context.mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1032,10 +1142,12 @@ class ProfileScreen extends StatelessWidget {
 
 class _SupportTicketDialog extends StatefulWidget {
   final SessionManager sessionManager;
+  final PlatformFeaturesRepository platformRepo;
   final ValueChanged<SupportTicketEntry> onCreated;
 
   const _SupportTicketDialog({
     required this.sessionManager,
+    required this.platformRepo,
     required this.onCreated,
   });
 
@@ -1058,11 +1170,16 @@ class _SupportTicketDialogState extends State<_SupportTicketDialog> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    final entry = await widget.sessionManager.addSupportTicket(
-      categoryKey: _selectedCategory,
+    final entry = await widget.platformRepo.createSupportTicket(
+      widget.sessionManager.token ?? '',
+      category: _selectedCategory,
       subject: _subjectCtrl.text.trim(),
       message: _messageCtrl.text.trim(),
     );
+    SessionManager.supportTicketsNotifier.value = [
+      entry,
+      ...SessionManager.supportTicketsNotifier.value.where((t) => t.ticketId != entry.ticketId),
+    ];
     if (mounted) {
       Navigator.pop(context);
       widget.onCreated(entry);

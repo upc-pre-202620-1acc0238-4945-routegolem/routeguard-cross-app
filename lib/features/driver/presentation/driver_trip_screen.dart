@@ -42,8 +42,6 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
 
   int get _boardedCount =>
       _passengers.where((p) => p.status == PassengerBoardingStatus.boarded).length;
-  int get _absentCount =>
-      _passengers.where((p) => p.status == PassengerBoardingStatus.absent).length;
   int get _totalCount => _passengers.length;
 
   Future<void> _openNavigationWithGoogleMaps() async {

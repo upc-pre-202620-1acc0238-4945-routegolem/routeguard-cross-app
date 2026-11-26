@@ -168,19 +168,7 @@ class _RoutesScreenState extends State<RoutesScreen> {
                             ),
                           ),
                         ),
-                        onPressed: _isCreating ? null : _handleCreateRoute,
-                        icon: _isCreating
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                              )
-                            : const Icon(Icons.add),
-                        label: Text(
-                          AppStrings.tr('btn_define_route'),
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                        ),
-                      ),
+                      ],
                     ),
                   ),
                 ),

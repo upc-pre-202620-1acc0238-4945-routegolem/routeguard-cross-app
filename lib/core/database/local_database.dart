@@ -297,7 +297,10 @@ class LocalDatabase {
         .toList();
   }
 
-  void clearMemoryForTesting() => _memoryFallback.clear();
+  void clearMemoryForTesting() {
+    _unavailable = true;
+    _memoryFallback.clear();
+  }
 
   Future<void> deleteById(String table, String id, {String pk = 'id'}) async {
     final db = await database;

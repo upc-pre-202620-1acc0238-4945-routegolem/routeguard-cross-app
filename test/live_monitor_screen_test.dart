@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:routeguard_cross_app/core/localization/app_strings.dart';
 import 'package:routeguard_cross_app/features/monitor/presentation/live_monitor_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   group('LiveMonitorScreen Widget Tests', () {
     setUp(() {
+      SharedPreferences.setMockInitialValues({});
       AppStrings.setLanguage(AppLanguage.spanish);
     });
 

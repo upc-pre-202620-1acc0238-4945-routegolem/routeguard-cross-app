@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../features/alerts/models/safety_alert.dart';
 import '../localization/app_strings.dart';
 
 class SupportTicketEntry {
@@ -42,6 +43,8 @@ class SessionManager {
   static const String _keyEmail = 'email';
   static const String _keyRole = 'role';
   static const String _keyOrganizationId = 'organization_id';
+  static const String _keyProfileId = 'profile_id';
+  static const String _keyCacheOwner = 'cache_owner';
   static const String _keySeenTutorialPrefix = 'seen_tutorial_';
   static const String _keyAvatarPath = 'avatar_path';
   static const String _keyLanguage = 'app_language';
@@ -112,6 +115,7 @@ class SessionManager {
     required String email,
     required String role,
     required String organizationId,
+    String? profileId,
   }) async {
     final normalizedRole = normalizeRole(role);
     await _prefs.setString(_keyToken, token);
@@ -120,6 +124,11 @@ class SessionManager {
     await _prefs.setString(_keyEmail, email);
     await _prefs.setString(_keyRole, normalizedRole);
     await _prefs.setString(_keyOrganizationId, organizationId);
+    if (profileId != null && profileId.isNotEmpty) {
+      await _prefs.setString(_keyProfileId, profileId);
+    } else {
+      await _prefs.remove(_keyProfileId);
+    }
     activeRoleNotifier.value = normalizedRole;
   }
 
@@ -136,7 +145,21 @@ class SessionManager {
   String get email => _prefs.getString(_keyEmail) ?? '';
   String get role => normalizeRole(_prefs.getString(_keyRole) ?? 'PARENT');
   String get organizationId => _prefs.getString(_keyOrganizationId) ?? 'org_school_01';
+  String? get profileId => _prefs.getString(_keyProfileId);
+  String? get cacheOwner => _prefs.getString(_keyCacheOwner);
   String get languageCode => _prefs.getString(_keyLanguage) ?? AppStrings.languageCode;
+
+  Future<void> setProfileId(String? value) async {
+    if (value == null || value.isEmpty) {
+      await _prefs.remove(_keyProfileId);
+    } else {
+      await _prefs.setString(_keyProfileId, value);
+    }
+  }
+
+  Future<void> setCacheOwner(String userId) async {
+    await _prefs.setString(_keyCacheOwner, userId);
+  }
 
   Future<void> setLanguage(AppLanguage language) async {
     AppStrings.setLanguage(language);
@@ -180,6 +203,8 @@ class SessionManager {
     await _prefs.remove(_keyEmail);
     await _prefs.remove(_keyRole);
     await _prefs.remove(_keyOrganizationId);
+    await _prefs.remove(_keyProfileId);
+    SafetyAlert.resetDefaults();
     activeRoleNotifier.value = 'PARENT';
   }
 }

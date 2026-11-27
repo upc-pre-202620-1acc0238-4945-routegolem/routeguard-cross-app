@@ -214,10 +214,28 @@ class _TripHistorySheetContentState extends State<_TripHistorySheetContent> {
                       itemBuilder: (context, index) {
                         final record = records[index];
                         final cancelled = record.isCancelled;
-                        final statusColor = cancelled ? AppTheme.errorColor : const Color(0xFF047857);
-                        final statusBg = cancelled
-                            ? AppTheme.errorContainer
-                            : const Color(0xFF10B981).withValues(alpha: 0.14);
+                        final inProgress = record.isInProgress;
+                        final pending = record.isPending;
+                        final Color statusColor;
+                        final Color statusBg;
+                        final String statusLabel;
+                        if (cancelled) {
+                          statusColor = AppTheme.errorColor;
+                          statusBg = AppTheme.errorContainer;
+                          statusLabel = AppStrings.tr('trip_history_status_cancelled');
+                        } else if (inProgress) {
+                          statusColor = AppTheme.primaryNavy;
+                          statusBg = AppTheme.primaryNavy.withValues(alpha: 0.12);
+                          statusLabel = AppStrings.tr('trip_history_status_in_progress');
+                        } else if (pending) {
+                          statusColor = Colors.orange.shade900;
+                          statusBg = Colors.orange.shade100;
+                          statusLabel = AppStrings.tr('trip_history_status_pending');
+                        } else {
+                          statusColor = const Color(0xFF047857);
+                          statusBg = const Color(0xFF10B981).withValues(alpha: 0.14);
+                          statusLabel = AppStrings.tr('trip_history_status_completed');
+                        }
 
                         return Container(
                           padding: const EdgeInsets.all(14),
@@ -246,9 +264,7 @@ class _TripHistorySheetContentState extends State<_TripHistorySheetContent> {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
-                                      cancelled
-                                          ? AppStrings.tr('trip_history_status_cancelled')
-                                          : AppStrings.tr('trip_history_status_completed'),
+                                      statusLabel,
                                       style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: statusColor),
                                     ),
                                   ),

@@ -51,10 +51,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return _resolvedSession;
   }
 
+  bool _isMockToken(String token) =>
+      token.isEmpty ||
+      token.startsWith('mock_') ||
+      token.startsWith('mock-') ||
+      token.startsWith('demo-');
+
   Future<void> _initAndLoad() async {
     final session = await _ensureSession();
     final token = session?.token ?? '';
-    if (token.isEmpty || token.startsWith('mock_') || token.startsWith('demo-')) {
+    if (_isMockToken(token)) {
       return;
     }
     if (mounted) setState(() => _isLoading = true);
@@ -76,7 +82,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Future<void> _refresh() async {
     final session = await _ensureSession();
     final token = session?.token ?? '';
-    if (token.isEmpty || token.startsWith('mock_') || token.startsWith('demo-')) {
+    if (_isMockToken(token)) {
       return;
     }
     if (mounted) setState(() => _isLoading = true);

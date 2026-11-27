@@ -11,6 +11,8 @@ import 'package:routeguard_cross_app/features/tracking/models/student_stop.dart'
 import 'package:routeguard_cross_app/features/tracking/models/trip_telemetry.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('Tracking Models Tests', () {
     test('creates TripTelemetry from valid json', () {
       final json = {

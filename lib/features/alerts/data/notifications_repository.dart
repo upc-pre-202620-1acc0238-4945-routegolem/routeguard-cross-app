@@ -14,7 +14,10 @@ class NotificationsRepository {
         _db = db ?? LocalDatabase.instance;
 
   bool _isLiveToken(String token) =>
-      token.isNotEmpty && !token.startsWith('mock_') && !token.startsWith('demo-');
+      token.isNotEmpty &&
+      !token.startsWith('mock_') &&
+      !token.startsWith('mock-') &&
+      !token.startsWith('demo-');
 
   Map<String, String> _headers(String token) => {
         'Content-Type': 'application/json',

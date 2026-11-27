@@ -103,7 +103,12 @@ class AuthRepository {
   }
 
   Future<String?> _resolveProfileId(UserAccount account) async {
-    if (account.token.isEmpty || account.token.startsWith('mock_')) return null;
+    if (account.token.isEmpty ||
+        account.token.startsWith('mock_') ||
+        account.token.startsWith('mock-') ||
+        account.token.startsWith('demo-')) {
+      return null;
+    }
     if (account.role != 'PARENT' && account.role != 'DRIVER') return null;
     final endpoint = account.role == 'PARENT'
         ? ApiConstants.parentsEndpoint

@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/localization/app_strings.dart';
+import '../../../core/network/road_routing_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/session_manager.dart';
 import '../../../core/widgets/attendance_report_dialog.dart';
 import '../../alerts/models/safety_alert.dart';
 import '../../driver/models/driver_passenger.dart';
@@ -12,8 +14,9 @@ import '../data/monitor_repository.dart';
 
 class LiveMonitorScreen extends StatefulWidget {
   final MonitorRepository? repository;
+  final SessionManager? sessionManager;
 
-  const LiveMonitorScreen({super.key, this.repository});
+  const LiveMonitorScreen({super.key, this.repository, this.sessionManager});
 
   @override
   State<LiveMonitorScreen> createState() => _LiveMonitorScreenState();
@@ -21,10 +24,12 @@ class LiveMonitorScreen extends StatefulWidget {
 
 class _LiveMonitorScreenState extends State<LiveMonitorScreen> {
   late final MonitorRepository _repository;
+  final RoadRoutingService _routingService = RoadRoutingService.instance;
   final _mapController = MapController();
 
   List<TripTelemetry> _trips = [];
   TripTelemetry? _selectedTrip;
+  List<LatLng>? _selectedRoadPath;
   bool _isLoading = true;
   Timer? _refreshTimer;
 
@@ -45,19 +50,51 @@ class _LiveMonitorScreenState extends State<LiveMonitorScreen> {
 
   Future<void> _loadTrips({bool silent = false}) async {
     if (!silent) setState(() => _isLoading = true);
-    final trips = await _repository.getActiveFleetTrips();
+    String token = widget.sessionManager?.token ?? '';
+    if (token.isEmpty) {
+      try {
+        final session = await SessionManager.create()
+            .timeout(const Duration(milliseconds: 250));
+        token = session.token ?? '';
+      } catch (_) {}
+    }
+    final trips = await _repository.getActiveFleetTrips(token);
     if (mounted) {
+      TripTelemetry? nextSelected;
+      if (_selectedTrip == null && trips.isNotEmpty) {
+        nextSelected = trips.first;
+      } else if (_selectedTrip != null && trips.isNotEmpty) {
+        nextSelected = trips.firstWhere(
+          (t) => t.tripId == _selectedTrip!.tripId,
+          orElse: () => trips.first,
+        );
+      }
       setState(() {
         _trips = trips;
         _isLoading = false;
-        if (_selectedTrip == null && trips.isNotEmpty) {
-          _selectedTrip = trips.first;
-        } else if (_selectedTrip != null) {
-          _selectedTrip = trips.firstWhere(
-            (t) => t.tripId == _selectedTrip!.tripId,
-            orElse: () => trips.first,
-          );
-        }
+        _selectedTrip = nextSelected;
+      });
+      if (nextSelected != null) {
+        _loadSelectedRoadPath(nextSelected);
+      }
+    }
+  }
+
+  Future<void> _loadSelectedRoadPath(TripTelemetry trip) async {
+    if (trip.stops.isEmpty) {
+      if (mounted && _selectedRoadPath != null) {
+        setState(() => _selectedRoadPath = null);
+      }
+      return;
+    }
+    final pts = <LatLng>[
+      LatLng(trip.currentLatitude, trip.currentLongitude),
+      ...trip.stops.map((s) => LatLng(s.latitude, s.longitude)),
+    ];
+    final road = await _routingService.getRoadRoute(pts);
+    if (mounted && _selectedTrip?.tripId == trip.tripId) {
+      setState(() {
+        _selectedRoadPath = road?.path ?? pts;
       });
     }
   }
@@ -65,7 +102,9 @@ class _LiveMonitorScreenState extends State<LiveMonitorScreen> {
   void _selectTrip(TripTelemetry trip) {
     setState(() {
       _selectedTrip = trip;
+      _selectedRoadPath = null;
     });
+    _loadSelectedRoadPath(trip);
     _mapController.move(
       LatLng(trip.currentLatitude, trip.currentLongitude),
       14.5,
@@ -148,6 +187,16 @@ class _LiveMonitorScreenState extends State<LiveMonitorScreen> {
                                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                                 userAgentPackageName: 'pe.edu.upc.routeguard.crossapp',
                               ),
+                              if (_selectedRoadPath != null && _selectedRoadPath!.length >= 2)
+                                PolylineLayer(
+                                  polylines: [
+                                    Polyline(
+                                      points: _selectedRoadPath!,
+                                      strokeWidth: 4,
+                                      color: AppTheme.primaryNavy.withValues(alpha: 0.85),
+                                    ),
+                                  ],
+                                ),
                               MarkerLayer(
                                 markers: _trips.map((trip) {
                                   final isSelected = trip.tripId == _selectedTrip?.tripId;

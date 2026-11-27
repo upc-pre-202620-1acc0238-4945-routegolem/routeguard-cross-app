@@ -25,8 +25,9 @@ class LocalDatabase {
       final fullPath = p.join(dbPath, 'routeguard_local.db');
       _db = await openDatabase(
         fullPath,
-        version: 1,
+        version: 2,
         onCreate: _onCreate,
+        onUpgrade: _onUpgrade,
       );
       return _db;
     } catch (_) {
@@ -185,6 +186,52 @@ class LocalDatabase {
         cancellation_reason TEXT
       )
     ''');
+    await _createNotificationsTable(db);
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await _createNotificationsTable(db);
+    }
+  }
+
+  Future<void> _createNotificationsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS notifications_cache (
+        id TEXT PRIMARY KEY,
+        trip_id TEXT,
+        type TEXT NOT NULL,
+        status TEXT NOT NULL,
+        title TEXT NOT NULL,
+        title_en TEXT,
+        message TEXT NOT NULL,
+        sent_at TEXT NOT NULL,
+        has_panic INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+  }
+
+  Future<void> clearUserScopedCaches() async {
+    const userTables = [
+      'notifications_cache',
+      'trip_history_cache',
+      'authorized_caregivers',
+      'support_tickets',
+      'trip_ratings',
+      'absence_reports',
+      'chat_messages',
+    ];
+    final db = await database;
+    if (db != null) {
+      await db.transaction((txn) async {
+        for (final table in userTables) {
+          await txn.delete(table);
+        }
+      });
+    }
+    for (final table in userTables) {
+      _memoryFallback.remove(table);
+    }
   }
 
   Future<void> upsertRow(String table, Map<String, Object?> values, {String pk = 'id'}) async {

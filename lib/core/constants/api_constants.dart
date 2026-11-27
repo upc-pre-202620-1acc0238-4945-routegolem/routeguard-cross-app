@@ -9,6 +9,7 @@ class ApiConstants {
   static const String tripsEndpoint = '/trips';
   static const String stopsEndpoint = '/stops';
   static const String alertsEndpoint = '/notifications';
+  static const String notificationsEndpoint = '/notifications';
   static const String driversEndpoint = '/drivers';
   static const String parentsEndpoint = '/parents';
   static const String studentGroupsEndpoint = '/student-groups';
@@ -17,5 +18,5 @@ class ApiConstants {
   static const String plansEndpoint = '/plans';
   static const String subscriptionsEndpoint = '/subscriptions';
 
-  static const Duration timeout = Duration(seconds: 3);
+  static const Duration timeout = Duration(seconds: 20);
 }

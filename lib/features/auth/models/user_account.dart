@@ -7,6 +7,7 @@ class UserAccount {
   final String role;
   final String token;
   final String organizationId;
+  final String? profileId;
   final String? photoData;
   final String? preferredLanguage;
 
@@ -17,9 +18,22 @@ class UserAccount {
     required this.role,
     required this.token,
     required this.organizationId,
+    this.profileId,
     this.photoData,
     this.preferredLanguage,
   });
+
+  UserAccount copyWith({String? profileId}) => UserAccount(
+        id: id,
+        fullName: fullName,
+        email: email,
+        role: role,
+        token: token,
+        organizationId: organizationId,
+        profileId: profileId ?? this.profileId,
+        photoData: photoData,
+        preferredLanguage: preferredLanguage,
+      );
 
   factory UserAccount.fromJson(Map<String, dynamic> json) {
     final rawRole = (json['role'] ?? json['roleTier'] ?? json['RoleTier'])?.toString() ?? 'PARENT';

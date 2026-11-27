@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/network/platform_features_repository.dart';
+import '../../../core/network/road_routing_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/session_manager.dart';
 import '../../../core/widgets/attendance_report_dialog.dart';
@@ -11,7 +12,9 @@ import '../../../core/widgets/platform_feature_dialogs.dart';
 import '../../../core/widgets/trip_history_sheet.dart';
 import '../../../core/widgets/vehicle_docs_dialog.dart';
 import '../../alerts/models/safety_alert.dart';
+import '../../fleet/models/route_model.dart';
 import '../../tracking/data/tracking_repository.dart';
+import '../../tracking/models/student_stop.dart';
 import '../models/driver_passenger.dart';
 
 enum DriverTripState { inProgress, finished, cancelled }
@@ -26,9 +29,20 @@ class DriverTripScreen extends StatefulWidget {
 }
 
 class _DriverTripScreenState extends State<DriverTripScreen> {
-  static const String _activeTripId = 'TRP-2026-08';
+  String _activeTripId = 'TRP-2026-08';
+  String? _activeRouteId;
+  String? _liveRouteName;
+  String? _liveVehiclePlate;
+  LatLng _busPos = const LatLng(-12.0898, -77.0055);
+  double _speedKmh = 35.0;
+  List<StudentStop> _stops = const [];
+  List<LatLng>? _roadPath;
+  List<RouteModel> _assignedRoutes = const [];
+  String? _selectedStartRouteId;
+  bool _awaitingTripStart = false;
 
   late final TrackingRepository _repository;
+  final RoadRoutingService _routingService = RoadRoutingService.instance;
   final PlatformFeaturesRepository _platformRepo = PlatformFeaturesRepository();
   final List<DriverPassenger> _passengers = DriverPassenger.getInitialRoster();
   SessionManager? _session;
@@ -50,14 +64,119 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
   Future<void> _loadSessionAndDocs() async {
     try {
       final session = await SessionManager.create();
-      final docs = await _platformRepo.loadPrimaryVehicleDocs(session.token ?? '');
+      final token = session.token ?? '';
+      final docs = await _platformRepo.loadPrimaryVehicleDocs(token);
+      DriverActiveTripResult? driverTrip;
+      List<LatLng>? roadPath;
+      if (token.isNotEmpty) {
+        driverTrip = await _repository.getDriverActiveTrip(
+          token,
+          sessionManager: session,
+          organizationId: session.organizationId,
+          driverProfileId: session.profileId,
+          userId: session.userId,
+        );
+        if (!driverTrip.isOfflineFallback) {
+          if (driverTrip.hasActiveTrip) {
+            final start = LatLng(
+              driverTrip.currentLatitude ?? -12.0898,
+              driverTrip.currentLongitude ?? -77.0055,
+            );
+            final routePts = <LatLng>[
+              start,
+              ...driverTrip.stops.map((s) => LatLng(s.latitude, s.longitude)),
+            ];
+            if (routePts.length >= 2) {
+              roadPath = (await _routingService.getRoadRoute(routePts))?.path;
+            }
+          } else if (driverTrip.assignedRoutes.isNotEmpty) {
+            final firstRoute = driverTrip.assignedRoutes.first;
+            final wpPts = firstRoute.waypoints
+                .map((w) => LatLng(w.latitude, w.longitude))
+                .toList();
+            if (wpPts.length >= 2) {
+              roadPath = (await _routingService.getRoadRoute(wpPts))?.path;
+            }
+          }
+        }
+      }
+
       if (mounted) {
         setState(() {
           _session = session;
           _vehicleDocs = docs;
+          if (driverTrip != null && !driverTrip.isOfflineFallback) {
+            _assignedRoutes = driverTrip.assignedRoutes;
+            if (driverTrip.hasActiveTrip && driverTrip.tripId != null) {
+              _activeTripId = driverTrip.tripId!;
+              _activeRouteId = driverTrip.routeId;
+              _liveRouteName = driverTrip.routeName;
+              _liveVehiclePlate = driverTrip.vehiclePlate;
+              _speedKmh = driverTrip.speedKmh ?? 32.0;
+              _stops = driverTrip.stops;
+              if (driverTrip.currentLatitude != null &&
+                  driverTrip.currentLongitude != null) {
+                _busPos = LatLng(
+                  driverTrip.currentLatitude!,
+                  driverTrip.currentLongitude!,
+                );
+              }
+              if (driverTrip.passengers.isNotEmpty) {
+                _passengers
+                  ..clear()
+                  ..addAll(driverTrip.passengers);
+              }
+              _roadPath = roadPath;
+              _tripState = DriverTripState.inProgress;
+              _awaitingTripStart = false;
+            } else {
+              _awaitingTripStart = driverTrip.assignedRoutes.isNotEmpty;
+              _selectedStartRouteId = driverTrip.assignedRoutes.firstOrNull?.id;
+              if (driverTrip.assignedRoutes.isNotEmpty) {
+                final firstRoute = driverTrip.assignedRoutes.first;
+                _activeRouteId = firstRoute.id;
+                _liveRouteName = firstRoute.name;
+                _liveVehiclePlate = firstRoute.vehiclePlate;
+                _stops = firstRoute.waypoints
+                    .asMap()
+                    .entries
+                    .map(
+                      (e) => StudentStop(
+                        id: 'wp_${e.key}',
+                        studentName: e.value.name,
+                        address: e.value.address,
+                        latitude: e.value.latitude,
+                        longitude: e.value.longitude,
+                        estimatedTime: '#${e.key + 1}',
+                        order: e.key + 1,
+                      ),
+                    )
+                    .toList();
+                if (_stops.isNotEmpty) {
+                  _busPos = LatLng(_stops.first.latitude, _stops.first.longitude);
+                }
+                _roadPath = roadPath;
+              }
+            }
+          }
         });
       }
     } catch (_) {}
+  }
+
+  Future<void> _startSelectedTrip() async {
+    final token = _session?.token ?? '';
+    final routeId = _selectedStartRouteId ?? _assignedRoutes.firstOrNull?.id;
+    if (token.isEmpty || routeId == null || routeId.isEmpty) return;
+    final ok = await _repository.startDriverTrip(
+      token,
+      organizationId: _session?.organizationId ?? 'org_school_01',
+      routeId: routeId,
+      driverId: _session?.profileId ?? _session?.userId ?? '',
+    );
+    if (ok) {
+      await _loadSessionAndDocs();
+    }
   }
 
   String _formatExpiryMmYyyy(String? raw) {
@@ -73,8 +192,11 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
   int get _totalCount => _passengers.length;
 
   Future<void> _openNavigationWithGoogleMaps() async {
-    final url = Uri.parse('google.navigation:q=-12.0898,-77.0055&mode=d');
-    final fallbackUrl = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=-12.0898,-77.0055');
+    final targetStop = _stops.where((s) => !s.isPickedUp).firstOrNull;
+    final lat = targetStop?.latitude ?? _busPos.latitude;
+    final lng = targetStop?.longitude ?? _busPos.longitude;
+    final url = Uri.parse('google.navigation:q=$lat,$lng&mode=d');
+    final fallbackUrl = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
     try {
       if (await canLaunchUrl(url)) {
         await launchUrl(url);
@@ -90,6 +212,21 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
     setState(() {
       passenger.status = newStatus;
     });
+
+    final token = _session?.token ?? '';
+    if (token.isNotEmpty && _activeTripId != 'TRP-2026-08') {
+      final stateStr = newStatus == PassengerBoardingStatus.boarded
+          ? 'BOARDED'
+          : newStatus == PassengerBoardingStatus.absent
+              ? 'ABSENT'
+              : 'MISSING';
+      _repository.setBoardingStatus(
+        token: token,
+        tripId: _activeTripId,
+        childId: passenger.id,
+        boardingState: stateStr,
+      );
+    }
 
     final snackMessage = newStatus == PassengerBoardingStatus.boarded
         ? AppStrings.trf('driver_snack_boarded', {'name': passenger.name})
@@ -425,17 +562,26 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
               backgroundColor: AppTheme.primaryNavy,
               foregroundColor: Colors.white,
             ),
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              setState(() {
-                _tripState = DriverTripState.finished;
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(AppStrings.tr('driver_finish_snack')),
-                  backgroundColor: Colors.green,
-                ),
-              );
+              final token = _session?.token ?? '';
+              if (token.isNotEmpty && _activeTripId != 'TRP-2026-08') {
+                await _repository.completeTrip(
+                  token: token,
+                  tripId: _activeTripId,
+                );
+              }
+              if (mounted) {
+                setState(() {
+                  _tripState = DriverTripState.finished;
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(AppStrings.tr('driver_finish_snack')),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
             },
             child: Text(AppStrings.tr('driver_finish_confirm')),
           ),
@@ -511,13 +657,13 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
         return Scaffold(
           backgroundColor: AppTheme.surfaceBackground,
           appBar: AppBar(
-            title: Text(AppStrings.tr('driver_route_title')),
+            title: Text(_liveRouteName ?? AppStrings.tr('driver_route_title')),
             actions: [
               TextButton.icon(
                 onPressed: () => showTripHistorySheet(
                   context,
                   repository: _repository,
-                  token: '',
+                  token: _session?.token ?? '',
                 ),
                 icon: const Icon(Icons.history_rounded, size: 18),
                 label: Text(
@@ -535,6 +681,73 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              if (_awaitingTripStart && _assignedRoutes.isNotEmpty) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryNavy.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: AppTheme.primaryNavy.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        AppStrings.tr('driver_pick_route_title'),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: AppTheme.primaryNavy,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        initialValue: _selectedStartRouteId,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        items: _assignedRoutes
+                            .map(
+                              (r) => DropdownMenuItem<String>(
+                                value: r.id,
+                                child: Text(
+                                  '${r.name} (${r.vehiclePlate})',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) => setState(() => _selectedStartRouteId = val),
+                      ),
+                      const SizedBox(height: 10),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryNavy,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: _startSelectedTrip,
+                        icon: const Icon(Icons.play_arrow_rounded),
+                        label: Text(AppStrings.tr('driver_start_trip_btn')),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               // Header Card
               Container(
                 padding: const EdgeInsets.all(16),
@@ -572,13 +785,15 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      AppStrings.tr('driver_route_title'),
+                                      _liveRouteName ?? AppStrings.tr('driver_route_title'),
                                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     Text(
-                                      AppStrings.tr('driver_route_subtitle'),
+                                      _liveVehiclePlate != null
+                                          ? 'Colegio San Juan • Van $_liveVehiclePlate'
+                                          : AppStrings.tr('driver_route_subtitle'),
                                       style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -781,8 +996,8 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                   child: Stack(
                     children: [
                       FlutterMap(
-                        options: const MapOptions(
-                          initialCenter: LatLng(-12.0898, -77.0055),
+                        options: MapOptions(
+                          initialCenter: _busPos,
                           initialZoom: 14.5,
                         ),
                         children: [
@@ -790,24 +1005,28 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                             userAgentPackageName: 'pe.edu.upc.routeguard.cross',
                           ),
-                          PolylineLayer(
-                            polylines: [
-                              Polyline(
-                                points: const [
-                                  LatLng(-12.0850, -77.0120),
-                                  LatLng(-12.0898, -77.0055),
-                                  LatLng(-12.0950, -76.9980),
-                                  LatLng(-12.1020, -76.9920),
-                                ],
-                                strokeWidth: 4.5,
-                                color: AppTheme.primaryNavy,
-                              ),
-                            ],
-                          ),
+                          if ((_roadPath != null && _roadPath!.length >= 2) ||
+                              _stops.length >= 2)
+                            PolylineLayer(
+                              polylines: [
+                                Polyline(
+                                  points: (_roadPath != null && _roadPath!.length >= 2)
+                                      ? _roadPath!
+                                      : [
+                                          _busPos,
+                                          ..._stops.map(
+                                            (s) => LatLng(s.latitude, s.longitude),
+                                          ),
+                                        ],
+                                  strokeWidth: 4.5,
+                                  color: AppTheme.primaryNavy,
+                                ),
+                              ],
+                            ),
                           MarkerLayer(
                             markers: [
                               Marker(
-                                point: const LatLng(-12.0898, -77.0055),
+                                point: _busPos,
                                 width: 44,
                                 height: 44,
                                 child: Container(
@@ -822,24 +1041,22 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                                   child: const Icon(Icons.directions_bus, color: Colors.black, size: 22),
                                 ),
                               ),
-                              Marker(
-                                point: const LatLng(-12.0850, -77.0120),
-                                width: 32,
-                                height: 32,
-                                child: const Icon(Icons.location_on, color: Colors.green, size: 28),
-                              ),
-                              Marker(
-                                point: const LatLng(-12.0950, -76.9980),
-                                width: 32,
-                                height: 32,
-                                child: const Icon(Icons.location_on, color: Colors.teal, size: 28),
-                              ),
-                              Marker(
-                                point: const LatLng(-12.1020, -76.9920),
-                                width: 32,
-                                height: 32,
-                                child: const Icon(Icons.school, color: AppTheme.primaryNavy, size: 28),
-                              ),
+                              ..._stops.map((stop) {
+                                final isSchool = stop.studentName.toLowerCase().contains('colegio') ||
+                                    stop.studentName.toLowerCase().contains('school');
+                                return Marker(
+                                  point: LatLng(stop.latitude, stop.longitude),
+                                  width: 32,
+                                  height: 32,
+                                  child: Icon(
+                                    isSchool ? Icons.school : Icons.location_on,
+                                    color: isSchool
+                                        ? AppTheme.primaryNavy
+                                        : (stop.isPickedUp ? Colors.green : Colors.teal),
+                                    size: 28,
+                                  ),
+                                );
+                              }),
                             ],
                           ),
                         ],
@@ -862,7 +1079,9 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                               const Icon(Icons.speed, size: 14, color: AppTheme.primaryNavy),
                               const SizedBox(width: 4),
                               Text(
-                                AppStrings.tr('driver_speed_moving'),
+                                _liveRouteName != null
+                                    ? '${_speedKmh.toStringAsFixed(0)} km/h'
+                                    : AppStrings.tr('driver_speed_moving'),
                                 style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryNavy),
                               ),
                             ],
@@ -1117,6 +1336,7 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                               repo: _platformRepo,
                               token: _session?.token ?? '',
                               canPublish: true,
+                              routeId: _activeRouteId,
                             ),
                           ),
                           ActionChip(
@@ -1129,6 +1349,7 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                               token: _session?.token ?? '',
                               canRequestChange: false,
                               canApproveChanges: true,
+                              routeId: _activeRouteId ?? 'f0000000-0000-0000-0000-000000000001',
                             ),
                           ),
                           ActionChip(
@@ -1142,6 +1363,7 @@ class _DriverTripScreenState extends State<DriverTripScreen> {
                               userId: _session?.userId ?? 'driver',
                               userName: _session?.fullName ?? 'Carlos Ramirez',
                               userRole: 'DRIVER',
+                              routeId: _activeRouteId,
                             ),
                           ),
                           ActionChip(

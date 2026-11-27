@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/network/platform_features_repository.dart';
+import '../../../core/network/road_routing_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/session_manager.dart';
 import '../../../core/widgets/platform_feature_dialogs.dart';
@@ -17,11 +18,13 @@ import '../models/trip_telemetry.dart';
 class LiveTrackingScreen extends StatefulWidget {
   final SessionManager sessionManager;
   final TrackingRepository? repository;
+  final RoadRoutingService? routingService;
 
   const LiveTrackingScreen({
     super.key,
     required this.sessionManager,
     this.repository,
+    this.routingService,
   });
 
   @override
@@ -30,11 +33,15 @@ class LiveTrackingScreen extends StatefulWidget {
 
 class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   late final TrackingRepository _repository;
+  late final RoadRoutingService _routingService;
   final PlatformFeaturesRepository _platformRepo = PlatformFeaturesRepository();
   final _mapController = MapController();
 
   TripTelemetry? _telemetry;
   List<StudentStop> _stops = [];
+  List<LatLng>? _roadPath;
+  ArrivalEstimateResult? _nextStopArrival;
+  bool _hasActiveTrip = true;
   bool _isLoading = true;
 
   // US-09 Early Absence state
@@ -48,19 +55,43 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   void initState() {
     super.initState();
     _repository = widget.repository ?? TrackingRepository();
+    _routingService = widget.routingService ?? RoadRoutingService.instance;
     _loadTrackingData();
   }
 
   Future<void> _loadTrackingData() async {
     setState(() => _isLoading = true);
     final token = widget.sessionManager.token ?? '';
-    final telemetry = await _repository.getActiveTrip(token);
-    final stops = await _repository.getStudentStops(token);
+    final result = await _repository.getParentActiveTrip(
+      token,
+      parentId: widget.sessionManager.profileId,
+      userId: widget.sessionManager.userId,
+      sessionManager: widget.sessionManager,
+    );
+
+    List<LatLng>? roadPath;
+    ArrivalEstimateResult? arrival;
+    if (result.hasActiveTrip && result.stops.length >= 2) {
+      final stopCoords = result.stops.map((s) => LatLng(s.latitude, s.longitude)).toList();
+      final road = await _routingService.getRoadRoute(stopCoords);
+      roadPath = road?.path;
+
+      final nextStop = result.stops.where((s) => !s.isPickedUp).firstOrNull;
+      if (nextStop != null && result.telemetry != null) {
+        arrival = await _routingService.estimateArrival(
+          LatLng(result.telemetry!.currentLatitude, result.telemetry!.currentLongitude),
+          LatLng(nextStop.latitude, nextStop.longitude),
+        );
+      }
+    }
 
     if (mounted) {
       setState(() {
-        _telemetry = telemetry;
-        _stops = stops;
+        _hasActiveTrip = result.hasActiveTrip;
+        _telemetry = result.telemetry;
+        _stops = result.stops;
+        _roadPath = roadPath;
+        _nextStopArrival = arrival;
         _isLoading = false;
       });
     }
@@ -340,13 +371,19 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   }
 
   Future<void> _showReportAbsenceDialog() async {
-    final derivedChildren = _stops
-        .map((s) => s.studentName.replaceAll(' (Hijo)', '').trim())
-        .where((name) =>
-            name.isNotEmpty &&
-            !name.toLowerCase().contains('colegio') &&
-            !name.toLowerCase().contains('destino'))
-        .toList();
+    final telemetryChildren = _telemetry?.children.map((c) => c.name).toList() ?? const [];
+    final derivedChildren = telemetryChildren.isNotEmpty
+        ? telemetryChildren
+        : _stops
+            .map((s) => s.studentName.replaceAll(' (Hijo)', '').trim())
+            .where((name) =>
+                name.isNotEmpty &&
+                !name.toLowerCase().contains('colegio') &&
+                !name.toLowerCase().contains('destino') &&
+                !name.toLowerCase().contains('parque') &&
+                !name.toLowerCase().contains('plaza') &&
+                !name.toLowerCase().contains('óvalo'))
+            .toList();
     final childOptions = derivedChildren.isNotEmpty ? derivedChildren : ['Mateo Nery', 'Luciana Nery'];
     String selectedChild = childOptions.first;
     String selectedReasonKey = 'absence_reason_medical';
@@ -453,12 +490,18 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
               ? 'Family trip'
               : 'Other';
 
+      final matchedChild = _telemetry?.children
+          .where((c) => c.name.toLowerCase() == selectedChild.toLowerCase())
+          .firstOrNull;
+
       await _repository.reportEarlyAbsence(
         tripId: _telemetry?.tripId ?? 'TRP-2026-08',
         studentName: selectedChild,
         reason: AppStrings.tr(selectedReasonKey),
         notes: notes,
         token: widget.sessionManager.token ?? '',
+        childId: matchedChild?.childId,
+        routeId: _telemetry?.routeId,
       );
 
       SafetyAlert.addAlert(
@@ -637,7 +680,49 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
           ),
           body: _isLoading
               ? const Center(child: CircularProgressIndicator())
-              : Stack(
+              : !_hasActiveTrip
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.directions_bus_outlined,
+                              size: 60,
+                              color: AppTheme.primaryNavy,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              AppStrings.tr('tracking_no_trip_title'),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.primaryNavy,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              AppStrings.tr('tracking_no_trip_subtitle'),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Colors.black54,
+                                height: 1.4,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            OutlinedButton.icon(
+                              onPressed: _loadTrackingData,
+                              icon: const Icon(Icons.refresh),
+                              label: Text(AppStrings.tr('tracking_tooltip_refresh')),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : Stack(
                   children: [
                     FlutterMap(
                       mapController: _mapController,
@@ -650,20 +735,24 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                           userAgentPackageName: 'pe.edu.upc.routeguard.crossapp',
                         ),
-                        PolylineLayer(
-                          polylines: [
-                            Polyline(
-                              points: [
-                                LatLng(-12.0920, -77.0280),
-                                busPos,
-                                LatLng(-12.1050, -77.0320),
-                                LatLng(-12.1120, -77.0350),
-                              ],
-                              strokeWidth: 4.5,
-                              color: AppTheme.primaryNavy.withValues(alpha: 0.8),
-                            ),
-                          ],
-                        ),
+                        if ((_roadPath != null && _roadPath!.length >= 2) ||
+                            _stops.length >= 2)
+                          PolylineLayer(
+                            polylines: [
+                              Polyline(
+                                points: (_roadPath != null && _roadPath!.length >= 2)
+                                    ? _roadPath!
+                                    : [
+                                        busPos,
+                                        ..._stops.map(
+                                          (s) => LatLng(s.latitude, s.longitude),
+                                        ),
+                                      ],
+                                strokeWidth: 4.5,
+                                color: AppTheme.primaryNavy.withValues(alpha: 0.85),
+                              ),
+                            ],
+                          ),
                         MarkerLayer(
                           markers: [
                             Marker(
@@ -952,7 +1041,18 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
-                                          AppStrings.tr('tracking_child_boarded_eta'),
+                                          _nextStopArrival != null &&
+                                                  _stops.any((s) => !s.isPickedUp)
+                                              ? AppStrings.trf(
+                                                  'tracking_eta_summary',
+                                                  {
+                                                    'stop': _stops
+                                                        .firstWhere((s) => !s.isPickedUp)
+                                                        .address,
+                                                    'eta': _nextStopArrival!.etaMinutes,
+                                                  },
+                                                )
+                                              : AppStrings.tr('tracking_child_boarded_eta'),
                                           style: const TextStyle(fontSize: 12, color: Colors.black87),
                                         ),
                                       ),
@@ -1020,6 +1120,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                                         repo: _platformRepo,
                                         token: widget.sessionManager.token ?? '',
                                         canPublish: false,
+                                        routeId: _telemetry?.routeId,
                                       ),
                                     ),
                                     ActionChip(
@@ -1034,7 +1135,13 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                                         token: widget.sessionManager.token ?? '',
                                         canRequestChange: true,
                                         canApproveChanges: false,
-                                        defaultChild: _stops
+                                        routeId: _telemetry?.routeId ??
+                                            'f0000000-0000-0000-0000-000000000001',
+                                        defaultChild: _telemetry?.children
+                                                .map((c) => c.name.trim())
+                                                .where((n) => n.isNotEmpty)
+                                                .firstOrNull ??
+                                            _stops
                                                 .map((s) => s.studentName.replaceAll(' (Hijo)', '').trim())
                                                 .where((n) => n.isNotEmpty && !n.toLowerCase().contains('colegio'))
                                                 .firstOrNull ??
@@ -1054,6 +1161,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                                         userId: widget.sessionManager.userId ?? '',
                                         userName: widget.sessionManager.fullName,
                                         userRole: widget.sessionManager.role,
+                                        routeId: _telemetry?.routeId,
                                       ),
                                     ),
                                   ],

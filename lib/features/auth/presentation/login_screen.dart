@@ -5,6 +5,7 @@ import '../../../core/localization/app_strings.dart';
 import '../../../core/network/platform_features_repository.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/session_manager.dart';
+import '../../alerts/models/safety_alert.dart';
 import '../data/auth_repository.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -67,6 +68,13 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text,
       );
 
+      final prevOwner = widget.sessionManager.cacheOwner;
+      if (prevOwner != null && prevOwner != account.id) {
+        await LocalDatabase.instance.clearUserScopedCaches();
+        SafetyAlert.setAlerts([]);
+      }
+      await widget.sessionManager.setCacheOwner(account.id);
+
       await widget.sessionManager.saveSession(
         token: account.token,
         userId: account.id,
@@ -74,6 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
         email: account.email,
         role: account.role,
         organizationId: account.organizationId,
+        profileId: account.profileId,
       );
 
       if (account.preferredLanguage != null && account.preferredLanguage!.isNotEmpty) {

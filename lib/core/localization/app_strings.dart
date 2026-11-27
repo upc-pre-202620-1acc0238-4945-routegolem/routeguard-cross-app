@@ -589,6 +589,29 @@ class AppStrings {
       'login_reset_success_msg': 'Contraseña actualizada en el servidor. Ya puedes iniciar sesión.',
       'login_reset_error_msg': 'Código inválido o expirado. Solicita uno nuevo.',
       'driver_tools_label': 'Herramientas y Comunicación de Ruta',
+      // Alerts filters & live parity
+      'alerts_filter_all': 'Todas',
+      'alerts_filter_priority': 'Prioritarias',
+      'alerts_filter_trip': 'Viaje',
+      'alerts_filter_notices': 'Avisos',
+      'alerts_empty_title': 'Sin notificaciones',
+      'alerts_empty_desc': 'Cuando haya novedades en tus viajes aparecerán aquí.',
+      'alerts_refresh_tooltip': 'Actualizar notificaciones',
+      // Tracking no-trip & live parity
+      'tracking_no_trip_title': 'Sin viaje en curso',
+      'tracking_no_trip_subtitle': 'Cuando la unidad que traslada a tus hijos inicie el recorrido, verás aquí su ubicación y paradas en vivo.',
+      'tracking_eta_summary': 'Próxima parada: {stop} ({eta} min aprox.)',
+      'tracking_children_on_trip': 'Estudiantes en esta ruta',
+      'tracking_waiting_gps': 'Esperando primera señal GPS de la unidad.',
+      // Trip history live statuses
+      'trip_history_status_in_progress': 'EN CURSO',
+      'trip_history_status_pending': 'PENDIENTE',
+      // Driver live trip & route picker
+      'driver_pick_route_title': 'Selecciona una ruta para iniciar',
+      'driver_start_trip_btn': 'Iniciar Recorrido',
+      'driver_no_routes': 'No tienes rutas activas asignadas en este momento.',
+      'driver_trip_started_snack': '¡Recorrido iniciado y transmitiendo en vivo!',
+      'driver_student_fallback': 'Estudiante {index}',
     },
     AppLanguage.english: {
       'app_title': 'RouteGuard',
@@ -1156,6 +1179,29 @@ class AppStrings {
       'login_reset_success_msg': 'Password updated on server. You may sign in now.',
       'login_reset_error_msg': 'Invalid or expired code. Please request a new one.',
       'driver_tools_label': 'Route Tools & Communication',
+      // Alerts filters & live parity
+      'alerts_filter_all': 'All',
+      'alerts_filter_priority': 'Priority',
+      'alerts_filter_trip': 'Trip',
+      'alerts_filter_notices': 'Notices',
+      'alerts_empty_title': 'No notifications yet',
+      'alerts_empty_desc': 'Updates from your trips will appear here.',
+      'alerts_refresh_tooltip': 'Refresh notifications',
+      // Tracking no-trip & live parity
+      'tracking_no_trip_title': 'No trip in progress',
+      'tracking_no_trip_subtitle': 'When the vehicle carrying your children starts its route, you will see its live location and stops here.',
+      'tracking_eta_summary': 'Next stop: {stop} (~{eta} min)',
+      'tracking_children_on_trip': 'Students on this route',
+      'tracking_waiting_gps': 'Waiting for the vehicle’s first GPS signal.',
+      // Trip history live statuses
+      'trip_history_status_in_progress': 'IN PROGRESS',
+      'trip_history_status_pending': 'PENDING',
+      // Driver live trip & route picker
+      'driver_pick_route_title': 'Select a route to start',
+      'driver_start_trip_btn': 'Start Trip',
+      'driver_no_routes': 'No active routes assigned to you right now.',
+      'driver_trip_started_snack': 'Trip started and broadcasting live!',
+      'driver_student_fallback': 'Student {index}',
     },
   };
 

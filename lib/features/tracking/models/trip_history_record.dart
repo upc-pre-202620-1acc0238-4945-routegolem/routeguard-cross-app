@@ -9,7 +9,7 @@ class TripHistoryRecord {
   final String dateEn;
   final int boardedCount;
   final int totalStudents;
-  final String status; // 'COMPLETED' | 'CANCELLED'
+  final String status; // 'COMPLETED' | 'CANCELLED' | 'IN_PROGRESS' | 'PENDING'
   int? rating;
   String? ratingComment;
   final String? cancellationReason;
@@ -31,23 +31,57 @@ class TripHistoryRecord {
 
   String get localizedDate => AppStrings.isSpanish ? dateEs : dateEn;
 
-  bool get isCancelled => status.toUpperCase() == 'CANCELLED' || status.toUpperCase() == 'CANCELADO';
+  String get normalizedStatus => status.trim().toUpperCase();
+  bool get isCancelled => normalizedStatus == 'CANCELLED' || normalizedStatus == 'CANCELADO';
+  bool get isInProgress => normalizedStatus == 'IN_PROGRESS' || normalizedStatus == 'EN_RUTA';
+  bool get isPending => normalizedStatus == 'PENDING' || normalizedStatus == 'PENDIENTE';
+  bool get isCompleted => !isCancelled && !isInProgress && !isPending;
+
+  static String _formatIsoDate(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return '--:--';
+    final parsed = DateTime.tryParse(raw.trim());
+    if (parsed == null) return raw;
+    final local = parsed.toLocal();
+    final dd = local.day.toString().padLeft(2, '0');
+    final mm = local.month.toString().padLeft(2, '0');
+    final hh = local.hour.toString().padLeft(2, '0');
+    final min = local.minute.toString().padLeft(2, '0');
+    return '$dd/$mm/${local.year} · $hh:$min';
+  }
+
+  static String _normalizeStatus(String raw) {
+    final upper = raw.trim().toUpperCase();
+    if (upper == 'CANCELLED' || upper == 'CANCELADO') return 'CANCELLED';
+    if (upper == 'IN_PROGRESS' || upper == 'EN_RUTA') return 'IN_PROGRESS';
+    if (upper == 'PENDING' || upper == 'PENDIENTE') return 'PENDING';
+    return 'COMPLETED';
+  }
 
   factory TripHistoryRecord.fromJson(Map<String, dynamic> json) {
-    final rawStatus = (json['status'] ?? json['Status'] ?? 'COMPLETED').toString().toUpperCase();
-    final dateStr = (json['date'] ?? json['startedAt'] ?? json['scheduledDate'] ?? 'Hoy, 07:50 AM').toString();
+    final rawStatus = (json['status'] ?? json['Status'] ?? 'COMPLETED').toString();
+    final explicitEs = json['dateEs']?.toString();
+    final explicitEn = json['dateEn']?.toString();
+    final rawBackendDate = (json['endTime'] ??
+            json['startTime'] ??
+            json['date'] ??
+            json['startedAt'] ??
+            json['scheduledDate'])
+        ?.toString();
+    final formatted = rawBackendDate != null ? _formatIsoDate(rawBackendDate) : '--:--';
+
+    final rawRating = json['myRating'] ?? json['rating'];
 
     return TripHistoryRecord(
       tripId: (json['id'] ?? json['tripId'] ?? json['TripId'] ?? 'TRP-HIST').toString(),
-      routeName: (json['routeName'] ?? json['RouteName'] ?? 'Ruta Escolar 02').toString(),
-      driverName: (json['driverName'] ?? json['DriverName'] ?? 'Carlos Ramírez').toString(),
-      vehiclePlate: (json['vehiclePlate'] ?? json['VehiclePlate'] ?? 'ABC-789').toString(),
-      dateEs: json['dateEs']?.toString() ?? dateStr,
-      dateEn: json['dateEn']?.toString() ?? dateStr,
-      boardedCount: (json['boardedCount'] ?? json['onboardStudents'] ?? 12) as int,
-      totalStudents: (json['totalStudents'] ?? json['totalChildren'] ?? 14) as int,
-      status: rawStatus == 'CANCELLED' || rawStatus == 'CANCELADO' ? 'CANCELLED' : 'COMPLETED',
-      rating: json['rating'] is int ? json['rating'] as int : null,
+      routeName: (json['routeName'] ?? json['RouteName'] ?? 'Ruta Escolar').toString(),
+      driverName: (json['driverName'] ?? json['DriverName'] ?? 'Conductor').toString(),
+      vehiclePlate: (json['vehiclePlate'] ?? json['VehiclePlate'] ?? 'ABC-123').toString(),
+      dateEs: explicitEs ?? formatted,
+      dateEn: explicitEn ?? formatted,
+      boardedCount: (json['boardedCount'] ?? json['onboardStudents'] ?? 0) as int,
+      totalStudents: (json['totalStudents'] ?? json['totalChildren'] ?? 0) as int,
+      status: _normalizeStatus(rawStatus),
+      rating: rawRating is num ? rawRating.toInt() : null,
       ratingComment: json['ratingComment']?.toString(),
       cancellationReason: json['cancellationReason']?.toString(),
     );

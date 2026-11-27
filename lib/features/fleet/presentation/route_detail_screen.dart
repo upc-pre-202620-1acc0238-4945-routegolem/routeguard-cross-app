@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/localization/app_strings.dart';
+import '../../../core/network/road_routing_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/fleet_repository.dart';
 import '../models/route_model.dart';
@@ -32,6 +33,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   RouteModel? _route;
   bool _isLoading = true;
   LatLng? _pickedPoint;
+  List<LatLng>? _roadPath;
 
   @override
   void initState() {
@@ -60,6 +62,17 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
           _pickedPoint = const LatLng(-12.0965, -77.0360);
         }
       });
+    }
+    if (route != null && route.waypoints.length >= 2) {
+      final pts = route.waypoints
+          .map((w) => LatLng(w.latitude, w.longitude))
+          .toList();
+      final road = await RoadRoutingService.instance.getRoadRoute(pts);
+      if (mounted && road != null && road.path.length >= 2) {
+        setState(() {
+          _roadPath = road.path;
+        });
+      }
     }
   }
 
@@ -227,7 +240,9 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                     PolylineLayer(
                       polylines: [
                         Polyline(
-                          points: polylinePoints,
+                          points: (_roadPath != null && _roadPath!.length >= 2)
+                              ? _roadPath!
+                              : polylinePoints,
                           strokeWidth: 4,
                           color: AppTheme.primaryNavy,
                         ),

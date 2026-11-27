@@ -46,7 +46,9 @@ class AuthRepository {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
-        return UserAccount.fromJson(data);
+        final account = UserAccount.fromJson(data);
+        final resolvedProfileId = await _resolveProfileId(account);
+        return account.copyWith(profileId: resolvedProfileId);
       } else if (response.statusCode == 401) {
         throw Exception(AppStrings.tr('auth_invalid_credentials'));
       } else {
@@ -98,6 +100,40 @@ class AuthRepository {
       }
       rethrow;
     }
+  }
+
+  Future<String?> _resolveProfileId(UserAccount account) async {
+    if (account.token.isEmpty || account.token.startsWith('mock_')) return null;
+    if (account.role != 'PARENT' && account.role != 'DRIVER') return null;
+    final endpoint = account.role == 'PARENT'
+        ? ApiConstants.parentsEndpoint
+        : ApiConstants.driversEndpoint;
+    try {
+      final response = await _client.get(
+        Uri.parse('${ApiConstants.baseUrl}$endpoint'),
+        headers: {
+          'Authorization': 'Bearer ${account.token}',
+          'Accept': 'application/json',
+        },
+      ).timeout(ApiConstants.timeout);
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is List) {
+          for (final item in decoded) {
+            if (item is Map<String, dynamic>) {
+              final uid = (item['userId'] ?? item['UserId'])?.toString();
+              if (uid == account.id) {
+                return (item['id'] ?? item['Id'])?.toString();
+              }
+            }
+          }
+          if (decoded.length == 1 && decoded.first is Map<String, dynamic>) {
+            return (decoded.first['id'] ?? decoded.first['Id'])?.toString();
+          }
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   String? _parseError(String body) {
